@@ -1,34 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-
-type LeadState = {
-  status:
-    | "sailing_now"
-    | "planning"
-    | "dreaming"
-    | "charterer"
-    | "pro"
-    | "unknown";
-  pain_points: string[];
-  pain_freetext: string | null;
-  location_hint: string | null;
-  intent_strength: number;
-  next_action:
-    | "ask_status"
-    | "ask_pain"
-    | "reveal_and_pitch"
-    | "request_email"
-    | "confirm_email"
-    | "wrap_up"
-    | "goodbye";
-};
-
-type CrewResponse = {
-  reply: string;
-  state: LeadState;
-  lead_ready_for_crm: boolean;
-};
+import {
+  CrewResponse,
+  EMAIL_RETRY_ID,
+  EMAIL_SUCCESS_ID,
+  LeadState,
+  looksLikeEmail,
+  OPENING_RESPONSE,
+  QuickReply,
+  ROOT_ID,
+  TREE,
+  TreeNode,
+} from "./tree";
 
 type DisplayMessage = {
   role: "user" | "assistant";
@@ -36,22 +20,9 @@ type DisplayMessage = {
 };
 
 // Claude-Turns: Assistant-Inhalte sind der rohe JSON-String, damit das Modell
-// seinen eigenen State über die Turns hinweg mitführt.
+// seinen eigenen State über die Turns hinweg mitführt. Die Tree-Schritte
+// schreiben in dasselbe Format, damit Claude beim Übergang nahtlos weitermacht.
 type ApiMessage = { role: "user" | "assistant"; content: string };
-
-const OPENING: CrewResponse = {
-  reply:
-    "Ahoy, Skipper. Frisch eingescannt — bist du gerade selbst auf'm Wasser, am Planen, oder noch am Träumen?",
-  state: {
-    status: "unknown",
-    pain_points: [],
-    pain_freetext: null,
-    location_hint: null,
-    intent_strength: 1,
-    next_action: "ask_status",
-  },
-  lead_ready_for_crm: false,
-};
 
 const STATUS_LABEL: Record<LeadState["status"], string> = {
   sailing_now: "Gerade an Bord",
@@ -64,44 +35,133 @@ const STATUS_LABEL: Record<LeadState["status"], string> = {
 
 export default function Home() {
   const [display, setDisplay] = useState<DisplayMessage[]>([
-    { role: "assistant", text: OPENING.reply },
+    { role: "assistant", text: OPENING_RESPONSE.reply },
   ]);
   const [history, setHistory] = useState<ApiMessage[]>([
-    { role: "assistant", content: JSON.stringify(OPENING) },
+    { role: "assistant", content: JSON.stringify(OPENING_RESPONSE) },
   ]);
-  const [state, setState] = useState<LeadState>(OPENING.state);
+  const [state, setState] = useState<LeadState>(OPENING_RESPONSE.state);
   const [leadReady, setLeadReady] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showStatus, setShowStatus] = useState(false);
 
+  // "tree" = Buttons, 0 Token. "claude" = Freitext geht an die Route.
+  const [mode, setMode] = useState<"tree" | "claude">("tree");
+  const [nodeId, setNodeId] = useState<string>(ROOT_ID);
+  // Künstliche "Crew denkt"-Pause zwischen Tree-Schritten, damit es nicht zu
+  // schnell durchrauscht (im Claude-Modus reicht die Netzwerk-Latenz).
+  const [thinking, setThinking] = useState(false);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const ended = state.next_action === "goodbye";
+  const node: TreeNode | null = mode === "tree" ? TREE[nodeId] : null;
+
+  const ended =
+    (mode === "tree" && !!node?.terminal) ||
+    (mode === "claude" && state.next_action === "goodbye");
+
   const wantsEmail =
-    state.next_action === "request_email" ||
-    state.next_action === "confirm_email";
+    (mode === "tree" && node?.mode === "email") ||
+    (mode === "claude" &&
+      (state.next_action === "request_email" ||
+        state.next_action === "confirm_email"));
+
+  // Buttons nur im Tree-Modus, solange der Node welche hat, nicht beendet und
+  // Crew gerade nicht "denkt".
+  const quickReplies =
+    mode === "tree" && !ended && !thinking ? (node?.quickReplies ?? null) : null;
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
       behavior: "smooth",
     });
-  }, [display, loading]);
+  }, [display, loading, thinking, quickReplies]);
 
-  async function send() {
-    const text = input.trim();
-    if (!text || loading || ended) return;
+  // Pausenlänge grob an der Antwortlänge orientiert (kurze Reaktion = kurz,
+  // langer Pitch = etwas länger), gedeckelt, damit's nie nervt.
+  function thinkDelay(reply: string): number {
+    return Math.min(1400, 550 + reply.length * 12);
+  }
 
-    const userDisplay: DisplayMessage = { role: "user", text };
+  // Schreibt einen Tree-Übergang in alle Verläufe: User-Bubble (sofern vorhanden),
+  // Crew-Bubble des Ziel-Nodes und den State. Hält history im Claude-JSON-Format,
+  // damit ein späterer Freitext-Turn nahtlos übergeben werden kann.
+  function applyNode(
+    target: TreeNode,
+    userText: string | null,
+    patch: Partial<LeadState> | undefined,
+  ) {
+    const nextState: LeadState = {
+      ...state,
+      ...patch,
+      ...target.patch,
+      next_action: target.nextAction,
+    };
+    const ready = target.leadReady ?? leadReady;
+    const crew: CrewResponse = {
+      reply: target.reply,
+      state: nextState,
+      lead_ready_for_crm: ready,
+    };
+
+    // Phase 1: User-Bubble sofort zeigen, dann "Crew denkt".
+    if (userText) {
+      setDisplay((d) => [...d, { role: "user", text: userText }]);
+      setHistory((h) => [...h, { role: "user", content: userText }]);
+    }
+    setError(null);
+    setThinking(true);
+
+    // Phase 2: nach kurzer Pause die Crew-Antwort + State nachziehen.
+    window.setTimeout(() => {
+      setDisplay((d) => [...d, { role: "assistant", text: target.reply }]);
+      setHistory((h) => [
+        ...h,
+        { role: "assistant", content: JSON.stringify(crew) },
+      ]);
+      setState(nextState);
+      setLeadReady(ready);
+      setNodeId(target.id);
+      setThinking(false);
+
+      if (target.mode === "email") {
+        requestAnimationFrame(() => inputRef.current?.focus());
+      }
+    }, thinkDelay(target.reply));
+  }
+
+  function onQuickReply(qr: QuickReply) {
+    if (loading || thinking || ended) return;
+    const target = TREE[qr.next];
+    if (!target) return;
+    applyNode(target, qr.send ?? qr.label, qr.patch);
+  }
+
+  // Email-Schritt: clientseitig validieren, KEIN Claude-Call.
+  function submitEmail(value: string) {
+    const email = value.trim();
+    if (looksLikeEmail(email)) {
+      applyNode(TREE[EMAIL_SUCCESS_ID], email, { pain_freetext: state.pain_freetext });
+    } else {
+      // Ungültig → Retry-Node. Die getippte (kaputte) Eingabe trotzdem zeigen.
+      applyNode(TREE[EMAIL_RETRY_ID], email || null, undefined);
+    }
+    setInput("");
+  }
+
+  // Freitext im Tree-Modus → ab hier übernimmt Claude (mit vollem State im
+  // letzten Assistant-Turn). Im Claude-Modus normaler Folge-Turn.
+  async function sendToClaude(text: string) {
     const userApi: ApiMessage = { role: "user", content: text };
     const nextHistory = [...history, userApi];
 
-    setDisplay((d) => [...d, userDisplay]);
+    setDisplay((d) => [...d, { role: "user", text }]);
     setHistory(nextHistory);
-    setInput("");
+    setMode("claude");
     setError(null);
     setLoading(true);
 
@@ -131,6 +191,18 @@ export default function Home() {
       setLoading(false);
       requestAnimationFrame(() => inputRef.current?.focus());
     }
+  }
+
+  function send() {
+    const text = input.trim();
+    if (!text || loading || thinking || ended) return;
+
+    if (wantsEmail) {
+      submitEmail(text);
+      return;
+    }
+    setInput("");
+    sendToClaude(text);
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -174,7 +246,7 @@ export default function Home() {
           <Bubble key={i} role={m.role} text={m.text} />
         ))}
 
-        {loading && <TypingBubble />}
+        {(loading || thinking) && <TypingBubble />}
 
         {error && (
           <div className="animate-surface mx-auto max-w-[85%] rounded-2xl bg-red-900/40 px-4 py-2.5 text-center text-sm text-red-100 ring-1 ring-red-400/30">
@@ -191,6 +263,22 @@ export default function Home() {
 
       {/* Eingabe */}
       <div className="border-t border-foam/10 bg-hull-deep/40 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+        {/* Vorgefertigte Antworten — 0 Token, kein Claude-Call */}
+        {quickReplies && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {quickReplies.map((qr) => (
+              <button
+                key={qr.next + qr.label}
+                onClick={() => onQuickReply(qr)}
+                disabled={loading}
+                className="animate-surface rounded-full bg-foam/10 px-3.5 py-2 text-[13px] font-medium text-sand ring-1 ring-foam/15 transition hover:bg-rope/20 hover:ring-rope/50 active:scale-95 disabled:opacity-40"
+              >
+                {qr.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {wantsEmail && !ended && (
           <div className="mb-2 px-1 text-[11px] font-medium text-rope">
             ✦ Tipp deine Email für die Alpha-Warteliste
@@ -202,7 +290,7 @@ export default function Home() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={onKeyDown}
-            disabled={loading || ended}
+            disabled={loading || thinking || ended}
             type={wantsEmail ? "email" : "text"}
             inputMode={wantsEmail ? "email" : "text"}
             autoComplete={wantsEmail ? "email" : "off"}
@@ -211,13 +299,15 @@ export default function Home() {
                 ? "Gespräch beendet"
                 : wantsEmail
                   ? "name@beispiel.de"
-                  : "Schreib was…"
+                  : quickReplies
+                    ? "…oder schreib frei"
+                    : "Schreib was…"
             }
             className="min-w-0 flex-1 rounded-2xl bg-foam/10 px-4 py-3 text-[15px] text-sand placeholder:text-foam/35 outline-none ring-1 ring-foam/15 transition focus:ring-rope/60 disabled:opacity-50"
           />
           <button
             onClick={send}
-            disabled={loading || ended || !input.trim()}
+            disabled={loading || thinking || ended || !input.trim()}
             aria-label="Senden"
             className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rope text-hull-deep transition hover:bg-rope-dark active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
           >
