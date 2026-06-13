@@ -86,8 +86,8 @@ export const INITIAL_STATE: LeadState = {
 // Gemeinsame "Was anderes…"-Option: führt in einen Freitext-Schritt, den dann
 // Claude übernimmt.
 const PAIN_OTHER: QuickReply = {
-  label: "Was anderes…",
-  send: "Was anderes…",
+  label: "Etwas anderes…",
+  send: "Etwas anderes…",
   next: "pain_other",
   patch: { pain_points: ["other"] },
 };
@@ -97,12 +97,12 @@ export const TREE: Record<string, TreeNode> = {
   opening: {
     id: "opening",
     reply:
-      "Ahoy, Skipper. Frisch eingescannt — bist du gerade selbst auf'm Wasser, am Planen, oder noch am Träumen?",
+      "Willkommen bei PicYourBoat. Damit ich dich richtig einordnen kann: Bist du gerade selbst auf dem Wasser, in der Planung oder noch am Überlegen?",
     nextAction: "ask_status",
     quickReplies: [
-      { label: "Auf'm Wasser 🌊", next: "pain_sailing", patch: { status: "sailing_now" } },
-      { label: "Am Planen 🗺️", next: "pain_planning", patch: { status: "planning" } },
-      { label: "Noch am Träumen 💭", next: "pain_dreaming", patch: { status: "dreaming" } },
+      { label: "Auf dem Wasser 🌊", next: "pain_sailing", patch: { status: "sailing_now" } },
+      { label: "In der Planung 🗺️", next: "pain_planning", patch: { status: "planning" } },
+      { label: "Noch am Überlegen 💭", next: "pain_dreaming", patch: { status: "dreaming" } },
       { label: "Ich verchartere selbst ⛵", next: "pain_charterer", patch: { status: "charterer" } },
       { label: "Profi (Schule/Skipper) 🧭", next: "pain_pro", patch: { status: "pro" } },
     ],
@@ -111,24 +111,24 @@ export const TREE: Record<string, TreeNode> = {
   // ── Pain je nach Status ──────────────────────────────────────────────────
   pain_sailing: {
     id: "pain_sailing",
-    reply: "Klar, dann kennst du den Steg. Was war bei dem Boot bisher am unangenehmsten?",
+    reply: "Dann kennst du den Ablauf. Was war bei diesem Boot bisher das größte Ärgernis?",
     nextAction: "ask_pain",
     quickReplies: [
       { label: "Versteckte Kosten 💸", next: "pitch_hidden_costs", patch: { pain_points: ["hidden_costs"] } },
-      { label: "Boot war anders als gezeigt 📸", next: "pitch_boat_mismatch", patch: { pain_points: ["boat_mismatch"] } },
-      { label: "Übergabe-Chaos ⚓", next: "pitch_handover", patch: { pain_points: ["handover_chaos"] } },
-      { label: "Vercharterer meldet sich nicht 📵", next: "pitch_unresponsive", patch: { pain_points: ["vendor_unresponsive"] } },
+      { label: "Boot wich von den Fotos ab 📸", next: "pitch_boat_mismatch", patch: { pain_points: ["boat_mismatch"] } },
+      { label: "Probleme bei der Übergabe ⚓", next: "pitch_handover", patch: { pain_points: ["handover_chaos"] } },
+      { label: "Vercharterer schlecht erreichbar 📵", next: "pitch_unresponsive", patch: { pain_points: ["vendor_unresponsive"] } },
       PAIN_OTHER,
     ],
   },
 
   pain_planning: {
     id: "pain_planning",
-    reply: "Gute Phase. Was nervt dich bei der Suche gerade am meisten?",
+    reply: "Eine gute Phase für verlässliche Informationen. Was ist bei der Suche aktuell das größte Problem?",
     nextAction: "ask_pain",
     quickReplies: [
-      { label: "Den Bewertungen trau ich nicht 🌟", next: "pitch_fake_reviews", patch: { pain_points: ["fake_reviews"] } },
-      { label: "Preise undurchsichtig 💸", next: "pitch_price", patch: { pain_points: ["price"] } },
+      { label: "Ich traue den Bewertungen nicht 🌟", next: "pitch_fake_reviews", patch: { pain_points: ["fake_reviews"] } },
+      { label: "Preise sind intransparent 💸", next: "pitch_price", patch: { pain_points: ["price"] } },
       { label: "Finde kein passendes Boot ⛵", next: "pitch_boat_mismatch", patch: { pain_points: ["boat_mismatch"] } },
       PAIN_OTHER,
     ],
@@ -136,11 +136,11 @@ export const TREE: Record<string, TreeNode> = {
 
   pain_dreaming: {
     id: "pain_dreaming",
-    reply: "Träumen ist der erste Schlag. Was hält dich noch ab?",
+    reply: "Verständlich. Was hält dich aktuell noch ab?",
     nextAction: "ask_pain",
     quickReplies: [
-      { label: "Preis 💸", next: "pitch_price", patch: { pain_points: ["price"] } },
-      { label: "Keine Crew 🧑‍🤝‍🧑", next: "pitch_crew_license", patch: { pain_points: ["no_crew"] } },
+      { label: "Der Preis 💸", next: "pitch_price", patch: { pain_points: ["price"] } },
+      { label: "Fehlende Crew 🧑‍🤝‍🧑", next: "pitch_crew_license", patch: { pain_points: ["no_crew"] } },
       { label: "Kein Skipperschein 🪪", next: "pitch_crew_license", patch: { pain_points: ["no_license"] } },
       PAIN_OTHER,
     ],
@@ -148,23 +148,23 @@ export const TREE: Record<string, TreeNode> = {
 
   pain_charterer: {
     id: "pain_charterer",
-    reply: "Andere Seite des Stegs, willkommen. Was nervt dich an heutigen Bewertungs-Plattformen?",
+    reply: "Die Anbieter-Perspektive interessiert uns besonders. Was stört dich an den heutigen Bewertungsplattformen?",
     nextAction: "ask_pain",
     quickReplies: [
       { label: "Fake-Bewertungen 🌟", next: "pitch_fake_reviews", patch: { pain_points: ["fake_reviews"] } },
-      { label: "Plattform-Gebühren zu hoch 💸", next: "pitch_price", patch: { pain_points: ["price"] } },
-      { label: "Gäste geben kein Feedback 📵", next: "pitch_unresponsive", patch: { pain_points: ["vendor_unresponsive"] } },
+      { label: "Zu hohe Plattform-Gebühren 💸", next: "pitch_price", patch: { pain_points: ["price"] } },
+      { label: "Gäste geben kaum Feedback 📵", next: "pitch_unresponsive", patch: { pain_points: ["vendor_unresponsive"] } },
       PAIN_OTHER,
     ],
   },
 
   pain_pro: {
     id: "pain_pro",
-    reply: "Profi an Bord. Was würde dir beim Kundenfeedback am meisten helfen?",
+    reply: "Als Profi hast du den besten Blick darauf. Was würde dir beim Kundenfeedback am meisten helfen?",
     nextAction: "ask_pain",
     quickReplies: [
       { label: "Ehrliches, verifiziertes Feedback 🌟", next: "pitch_fake_reviews", patch: { pain_points: ["fake_reviews"] } },
-      { label: "Weniger Buchungs-Chaos ⚓", next: "pitch_handover", patch: { pain_points: ["handover_chaos"] } },
+      { label: "Weniger Aufwand bei Buchungen ⚓", next: "pitch_handover", patch: { pain_points: ["handover_chaos"] } },
       PAIN_OTHER,
     ],
   },
@@ -173,7 +173,7 @@ export const TREE: Record<string, TreeNode> = {
   // sobald der User hier tippt).
   pain_other: {
     id: "pain_other",
-    reply: "Schieß los — erzähl mir kurz, was war's?",
+    reply: "Erzähl mir gern, worum es konkret geht.",
     nextAction: "ask_pain",
   },
 
@@ -182,90 +182,93 @@ export const TREE: Record<string, TreeNode> = {
   pitch_hidden_costs: {
     id: "pitch_hidden_costs",
     reply:
-      "Das klassische Foul am Ende — Endreinigung, Kaution, Sprit obendrauf. Genau das machen wir vor der Buchung sichtbar. Wirf deine Email rein, dann pingen wir dich zum Alpha-Start.",
+      "Versteckte Kosten wie Endreinigung, Kaution oder Sprit, die erst am Ende auftauchen, sind ein häufiges Ärgernis. Genau diese Punkte machen wir vor der Buchung transparent. Hinterlasse mir gern deine Email, dann informieren wir dich zum Start der Alpha-Phase.",
     nextAction: "request_email",
     mode: "email",
     patch: { next_action: "request_email", intent_strength: 3 },
-    quickReplies: [{ label: "Nee, lass mal 🙏", next: "wrap_up_skip" }],
+    quickReplies: [{ label: "Nein, danke 🙏", next: "email_decline" }],
   },
   pitch_boat_mismatch: {
     id: "pitch_boat_mismatch",
     reply:
-      "Hochglanz-Fotos, dann liegt was anderes am Steg — kennen wir. Bei uns zählt nur, was verifizierte Skipper wirklich vorgefunden haben. Wirf deine Email rein, dann melden wir uns zum Alpha-Start.",
+      "Wenn das Boot von den Fotos abweicht, hilft nur ehrliche Erfahrung. Bei uns zählt ausschließlich, was verifizierte Skipper tatsächlich vorgefunden haben. Hinterlasse mir gern deine Email, dann melden wir uns zum Start der Alpha-Phase.",
     nextAction: "request_email",
     mode: "email",
     patch: { next_action: "request_email", intent_strength: 3 },
-    quickReplies: [{ label: "Nee, lass mal 🙏", next: "wrap_up_skip" }],
+    quickReplies: [{ label: "Nein, danke 🙏", next: "email_decline" }],
   },
   pitch_handover: {
     id: "pitch_handover",
     reply:
-      "Zwei Stunden am Steg auf die Übergabe warten — genau das soll vorher sichtbar sein, bei wem's rund läuft. Wirf deine Email rein, dann pingen wir dich zum Alpha-Start.",
+      "Eine reibungslose Übergabe macht einen großen Unterschied. Echte Bewertungen zeigen vorab, bei welchen Anbietern das zuverlässig funktioniert. Hinterlasse mir gern deine Email, dann informieren wir dich zum Start der Alpha-Phase.",
     nextAction: "request_email",
     mode: "email",
     patch: { next_action: "request_email", intent_strength: 3 },
-    quickReplies: [{ label: "Nee, lass mal 🙏", next: "wrap_up_skip" }],
+    quickReplies: [{ label: "Nein, danke 🙏", next: "email_decline" }],
   },
   pitch_unresponsive: {
     id: "pitch_unresponsive",
     reply:
-      "Funkstille ist das Schlimmste. Wir zeigen, wer wirklich antwortet — von Leuten, die's erlebt haben. Wirf deine Email rein, dann melden wir uns zum Alpha-Start.",
+      "Eine schlechte Erreichbarkeit des Vercharterers ist ein klares Warnsignal. Wir machen sichtbar, wer zuverlässig reagiert – bewertet von Skippern, die es selbst erlebt haben. Hinterlasse mir gern deine Email, dann melden wir uns zum Start der Alpha-Phase.",
     nextAction: "request_email",
     mode: "email",
     patch: { next_action: "request_email", intent_strength: 3 },
-    quickReplies: [{ label: "Nee, lass mal 🙏", next: "wrap_up_skip" }],
+    quickReplies: [{ label: "Nein, danke 🙏", next: "email_decline" }],
   },
   pitch_fake_reviews: {
     id: "pitch_fake_reviews",
     reply:
-      "Genau unser Thema: keine gekauften Sternchen, nur verifizierte Skipper. Trustpilot für Charter-Yachten, ehrlich. Wirf deine Email rein, dann bist du beim Alpha-Start dabei.",
+      "Das ist unser Kernthema: keine gekauften Bewertungen, sondern ausschließlich verifizierte Skipper – eine unabhängige Bewertungsplattform für Charter-Yachten. Hinterlasse mir gern deine Email, dann bist du beim Start der Alpha-Phase dabei.",
     nextAction: "request_email",
     mode: "email",
     patch: { next_action: "request_email", intent_strength: 4 },
-    quickReplies: [{ label: "Nee, lass mal 🙏", next: "wrap_up_skip" }],
+    quickReplies: [{ label: "Nein, danke 🙏", next: "email_decline" }],
   },
   pitch_price: {
     id: "pitch_price",
     reply:
-      "Preise ohne Kleingedrucktes — und Bewertungen, die sagen, ob's den Törn wert war. Beides bauen wir. Wirf deine Email rein, dann pingen wir dich zum Alpha-Start.",
+      "Transparente Preise ohne Kleingedrucktes und Bewertungen, die zeigen, ob sich der Törn gelohnt hat – beides bauen wir auf. Hinterlasse mir gern deine Email, dann informieren wir dich zum Start der Alpha-Phase.",
     nextAction: "request_email",
     mode: "email",
     patch: { next_action: "request_email", intent_strength: 3 },
-    quickReplies: [{ label: "Nee, lass mal 🙏", next: "wrap_up_skip" }],
+    quickReplies: [{ label: "Nein, danke 🙏", next: "email_decline" }],
   },
   pitch_crew_license: {
     id: "pitch_crew_license",
     reply:
-      "Verständlich. Wir zeigen dir ehrlich bewertet, wo Einsteiger und Crew-Suchende gut aufgehoben sind. Wirf deine Email rein, dann melden wir uns zum Alpha-Start.",
+      "Verständlich. Anhand ehrlicher Bewertungen zeigen wir dir, wo Einsteiger und Crew-Suchende gut aufgehoben sind. Hinterlasse mir gern deine Email, dann melden wir uns zum Start der Alpha-Phase.",
     nextAction: "request_email",
     mode: "email",
     patch: { next_action: "request_email", intent_strength: 2 },
-    quickReplies: [{ label: "Nee, lass mal 🙏", next: "wrap_up_skip" }],
-  },
-
-  // Wird gezeigt, wenn die getippte Email nicht plausibel ist.
-  email_retry: {
-    id: "email_retry",
-    reply: "Da fehlt 'n @ oder 'n Punkt — magst du's nochmal tippen?",
-    nextAction: "confirm_email",
-    mode: "email",
-    patch: { next_action: "confirm_email" },
-    quickReplies: [{ label: "Lass gut sein 🙏", next: "wrap_up_skip" }],
+    quickReplies: [{ label: "Nein, danke 🙏", next: "email_decline" }],
   },
 
   // ── Abschluss ────────────────────────────────────────────────────────────
   wrap_up_email: {
     id: "wrap_up_email",
     reply:
-      "Bist auf der Liste ⚓ Wer 3 aus seiner Crew mitbringt, kriegt Lifetime-Pro. Bis bald am Steg!",
+      "Vielen Dank – du stehst auf der Liste ⚓ Wer drei weitere Segler einlädt, erhält Lifetime-Pro. Wir melden uns zum Start der Alpha-Phase.",
     nextAction: "wrap_up",
     terminal: true,
     leadReady: true,
     patch: { next_action: "wrap_up", intent_strength: 4 },
   },
-  wrap_up_skip: {
-    id: "wrap_up_skip",
-    reply: "Alles klar, kein Stress. Handbreit Wasser unter'm Kiel ⛵",
+  // Einwandbehandlung: kein Sackgassen-Ende. Wert einmal sachlich einordnen,
+  // Tür offen lassen (Eingabe bleibt aktiv) — der User kann weiter fragen, doch
+  // noch eine Email dalassen oder das Gespräch bewusst beenden.
+  email_decline: {
+    id: "email_decline",
+    reply:
+      "Kein Problem, ich dränge dich nicht. Wir würden uns nur einmal zum Start der Alpha-Phase melden – kein Newsletter, kein Spam. Wenn du magst, beantworte ich dir vorher noch offene Fragen, oder du hinterlässt deine Email doch noch.",
+    nextAction: "request_email",
+    mode: "email",
+    patch: { next_action: "request_email" },
+    quickReplies: [{ label: "Nein, das war's 🙏", next: "goodbye_final" }],
+  },
+
+  goodbye_final: {
+    id: "goodbye_final",
+    reply: "Alles klar. Vielen Dank für deine Zeit und allzeit gute Fahrt ⛵",
     nextAction: "goodbye",
     terminal: true,
     patch: { next_action: "goodbye" },
@@ -274,12 +277,16 @@ export const TREE: Record<string, TreeNode> = {
 
 // Ziel-Node nach erfolgreicher Email-Eingabe (konstant, daher hier zentral).
 export const EMAIL_SUCCESS_ID = "wrap_up_email";
-export const EMAIL_RETRY_ID = "email_retry";
 
-// Sehr lockere Plausibilitätsprüfung — bewusst nur @ + Punkt, wie im Prompt.
-export function looksLikeEmail(value: string): boolean {
-  const v = value.trim();
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+// Zieht eine Email-Adresse aus freiem Text — egal ob nackt ("max@foo.de") oder
+// eingebettet ("klar, schreib mir an max@foo.de!"). Bewusst lockere Regel
+// (@ + Punkt), wie im Prompt. Gibt null zurück, wenn keine drinsteckt — dann
+// behandelt das Frontend die Eingabe als Frage und gibt sie an Claude.
+export function extractEmail(text: string): string | null {
+  const m = text.match(/[^\s@]+@[^\s@]+\.[^\s@]+/);
+  if (!m) return null;
+  // Übliche Satzzeichen am Ende abschneiden ("...@foo.de." / "...@foo.de,").
+  return m[0].replace(/[.,;:!?")\]]+$/, "");
 }
 
 export const OPENING_RESPONSE: CrewResponse = {

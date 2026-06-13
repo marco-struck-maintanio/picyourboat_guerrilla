@@ -3,10 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import {
   CrewResponse,
-  EMAIL_RETRY_ID,
   EMAIL_SUCCESS_ID,
+  extractEmail,
   LeadState,
-  looksLikeEmail,
   OPENING_RESPONSE,
   QuickReply,
   ROOT_ID,
@@ -42,6 +41,8 @@ export default function Home() {
   ]);
   const [state, setState] = useState<LeadState>(OPENING_RESPONSE.state);
   const [leadReady, setLeadReady] = useState(false);
+  // Aus dem Freitext ausgewertete Email-Adresse (für Status/CRM).
+  const [capturedEmail, setCapturedEmail] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -141,21 +142,13 @@ export default function Home() {
     applyNode(target, qr.send ?? qr.label, qr.patch);
   }
 
-  // Email-Schritt: clientseitig validieren, KEIN Claude-Call.
-  function submitEmail(value: string) {
-    const email = value.trim();
-    if (looksLikeEmail(email)) {
-      applyNode(TREE[EMAIL_SUCCESS_ID], email, { pain_freetext: state.pain_freetext });
-    } else {
-      // Ungültig → Retry-Node. Die getippte (kaputte) Eingabe trotzdem zeigen.
-      applyNode(TREE[EMAIL_RETRY_ID], email || null, undefined);
-    }
-    setInput("");
-  }
-
   // Freitext im Tree-Modus → ab hier übernimmt Claude (mit vollem State im
   // letzten Assistant-Turn). Im Claude-Modus normaler Folge-Turn.
   async function sendToClaude(text: string) {
+    // Auch wenn Claude den Turn übernimmt: eine mitgeschickte Email auswerten.
+    const maybeEmail = extractEmail(text);
+    if (maybeEmail) setCapturedEmail(maybeEmail);
+
     const userApi: ApiMessage = { role: "user", content: text };
     const nextHistory = [...history, userApi];
 
@@ -196,12 +189,20 @@ export default function Home() {
   function send() {
     const text = input.trim();
     if (!text || loading || thinking || ended) return;
-
-    if (wantsEmail) {
-      submitEmail(text);
-      return;
-    }
     setInput("");
+
+    // Im Email-Schritt: freien Input auswerten. Steckt eine Email drin, ziehen
+    // wir sie raus (token-frei, clientseitig). Sonst ist es eine Frage → Claude
+    // (wir erwarten immer auch eine Frage statt einer Adresse).
+    if (mode === "tree" && node?.mode === "email") {
+      const email = extractEmail(text);
+      if (email) {
+        setCapturedEmail(email);
+        applyNode(TREE[EMAIL_SUCCESS_ID], text, undefined);
+        return;
+      }
+    }
+
     sendToClaude(text);
   }
 
@@ -216,15 +217,17 @@ export default function Home() {
     <div className="mx-auto flex h-[100dvh] max-w-md flex-col">
       {/* Kopf */}
       <header className="flex items-center gap-3 px-5 pb-3 pt-[max(0.9rem,env(safe-area-inset-top))]">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rope/15 text-xl ring-1 ring-rope/40">
-          ⚓
-        </div>
+        <img
+          src="/logo.png"
+          alt="PicYourBoat"
+          className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-rope/40"
+        />
         <div className="leading-tight">
           <div className="font-display text-lg font-semibold text-sand">
             Crew
           </div>
           <div className="text-xs text-foam/55">
-            dein Hafen-Buddy · PicYourBoat
+            dein Assistent · PicYourBoat
           </div>
         </div>
         <button
@@ -235,7 +238,9 @@ export default function Home() {
         </button>
       </header>
 
-      {showStatus && <StatusPanel state={state} leadReady={leadReady} />}
+      {showStatus && (
+        <StatusPanel state={state} leadReady={leadReady} email={capturedEmail} />
+      )}
 
       {/* Verlauf */}
       <div
@@ -256,7 +261,7 @@ export default function Home() {
 
         {ended && (
           <div className="animate-surface mx-auto mt-2 text-center text-xs text-foam/45">
-            handbreit Wasser unter'm Kiel ⛵
+            Vielen Dank und allzeit gute Fahrt ⛵
           </div>
         )}
       </div>
@@ -281,7 +286,7 @@ export default function Home() {
 
         {wantsEmail && !ended && (
           <div className="mb-2 px-1 text-[11px] font-medium text-rope">
-            ✦ Tipp deine Email für die Alpha-Warteliste
+            ✦ Deine Email für die Alpha-Warteliste — oder stell mir eine Frage
           </div>
         )}
         <div className="flex items-end gap-2">
@@ -298,10 +303,10 @@ export default function Home() {
               ended
                 ? "Gespräch beendet"
                 : wantsEmail
-                  ? "name@beispiel.de"
+                  ? "name@beispiel.de oder eine Frage"
                   : quickReplies
-                    ? "…oder schreib frei"
-                    : "Schreib was…"
+                    ? "…oder frei formulieren"
+                    : "Nachricht eingeben…"
             }
             className="min-w-0 flex-1 rounded-2xl bg-foam/10 px-4 py-3 text-[15px] text-sand placeholder:text-foam/35 outline-none ring-1 ring-foam/15 transition focus:ring-rope/60 disabled:opacity-50"
           />
@@ -365,9 +370,11 @@ function TypingBubble() {
 function StatusPanel({
   state,
   leadReady,
+  email,
 }: {
   state: LeadState;
   leadReady: boolean;
+  email: string | null;
 }) {
   return (
     <div className="animate-surface mx-4 mb-1 rounded-xl bg-hull-deep/50 p-3 text-xs ring-1 ring-foam/10">
@@ -382,6 +389,7 @@ function StatusPanel({
       />
       <Row label="O-Ton" value={state.pain_freetext ?? "—"} />
       <Row label="Revier" value={state.location_hint ?? "—"} />
+      <Row label="Email" value={email ?? "—"} />
       <Row label="Intent" value={"★".repeat(state.intent_strength) || "—"} />
       <Row label="Next" value={state.next_action} />
       <div className="mt-2 flex items-center gap-2 border-t border-foam/10 pt-2">
