@@ -182,7 +182,7 @@ export const TREE: Record<string, TreeNode> = {
   pitch_hidden_costs: {
     id: "pitch_hidden_costs",
     reply:
-      "Versteckte Kosten wie Endreinigung, Kaution oder Sprit, die erst am Ende auftauchen, sind ein häufiges Ärgernis. Genau diese Punkte machen wir vor der Buchung transparent. Hinterlasse mir gern deine Email, dann informieren wir dich zum Start der Alpha-Phase.",
+      "Versteckte Kosten wie Endreinigung, Kaution oder Sprit, die erst am Ende auftauchen, sind ein häufiges Ärgernis. Wir haben jedes Boot in der Datenbank und zeigen dir vorab den echten Gesamtpreis – alle Nebenkosten inklusive, nichts versteckt. Hinterlasse mir gern deine Email, dann sichern wir dir den Early Access.",
     nextAction: "request_email",
     mode: "email",
     patch: { next_action: "request_email", intent_strength: 3 },
@@ -191,7 +191,7 @@ export const TREE: Record<string, TreeNode> = {
   pitch_boat_mismatch: {
     id: "pitch_boat_mismatch",
     reply:
-      "Wenn das Boot von den Fotos abweicht, hilft nur ehrliche Erfahrung. Bei uns zählt ausschließlich, was verifizierte Skipper tatsächlich vorgefunden haben. Hinterlasse mir gern deine Email, dann melden wir uns zum Start der Alpha-Phase.",
+      "Wenn das Boot von den Fotos abweicht, ist der Ärger groß. Wir haben jedes Boot mit echten Fotos und geprüfter Ausstattung in der Datenbank – plus Bewertungen von verifizierten Skippern, die tatsächlich an Bord waren. Du weißt vorher genau, was dich erwartet. Hinterlasse mir gern deine Email, dann sichern wir dir den Early Access.",
     nextAction: "request_email",
     mode: "email",
     patch: { next_action: "request_email", intent_strength: 3 },
@@ -200,7 +200,7 @@ export const TREE: Record<string, TreeNode> = {
   pitch_handover: {
     id: "pitch_handover",
     reply:
-      "Eine reibungslose Übergabe macht einen großen Unterschied. Echte Bewertungen zeigen vorab, bei welchen Anbietern das zuverlässig funktioniert. Hinterlasse mir gern deine Email, dann informieren wir dich zum Start der Alpha-Phase.",
+      "Eine reibungslose Übergabe macht einen großen Unterschied. Zu jedem Boot in unserer Datenbank findest du echte Bewertungen verifizierter Skipper – du siehst vorab, bei welchen Anbietern die Übergabe zuverlässig läuft. Hinterlasse mir gern deine Email, dann sichern wir dir den Early Access.",
     nextAction: "request_email",
     mode: "email",
     patch: { next_action: "request_email", intent_strength: 3 },
@@ -209,7 +209,7 @@ export const TREE: Record<string, TreeNode> = {
   pitch_unresponsive: {
     id: "pitch_unresponsive",
     reply:
-      "Eine schlechte Erreichbarkeit des Vercharterers ist ein klares Warnsignal. Wir machen sichtbar, wer zuverlässig reagiert – bewertet von Skippern, die es selbst erlebt haben. Hinterlasse mir gern deine Email, dann melden wir uns zum Start der Alpha-Phase.",
+      "Eine schlechte Erreichbarkeit des Vercharterers ist ein klares Warnsignal. In unserer Datenbank steht zu jedem Anbieter, wie zuverlässig er reagiert – bewertet von Skippern, die dort tatsächlich gechartert haben. Hinterlasse mir gern deine Email, dann sichern wir dir den Early Access.",
     nextAction: "request_email",
     mode: "email",
     patch: { next_action: "request_email", intent_strength: 3 },
@@ -218,7 +218,7 @@ export const TREE: Record<string, TreeNode> = {
   pitch_fake_reviews: {
     id: "pitch_fake_reviews",
     reply:
-      "Das ist unser Kernthema: keine gekauften Bewertungen, sondern ausschließlich verifizierte Skipper – eine unabhängige Bewertungsplattform für Charter-Yachten. Hinterlasse mir gern deine Email, dann bist du beim Start der Alpha-Phase dabei.",
+      "Das ist unser Kernthema: jedes Boot in einer vollständigen Datenbank – mit echten Fotos, echter Ausstattung, echtem Preis und Bewertungen ausschließlich von verifizierten Skippern. Keine gekauften Sterne. Hinterlasse mir gern deine Email, dann bist du beim Early Access dabei.",
     nextAction: "request_email",
     mode: "email",
     patch: { next_action: "request_email", intent_strength: 4 },
@@ -227,7 +227,7 @@ export const TREE: Record<string, TreeNode> = {
   pitch_price: {
     id: "pitch_price",
     reply:
-      "Transparente Preise ohne Kleingedrucktes und Bewertungen, die zeigen, ob sich der Törn gelohnt hat – beides bauen wir auf. Hinterlasse mir gern deine Email, dann informieren wir dich zum Start der Alpha-Phase.",
+      "Zu jedem Boot in unserer Datenbank siehst du den echten Preis inklusive aller Nebenkosten – und Bewertungen verifizierter Skipper, ob sich der Törn gelohnt hat. Kein Kleingedrucktes, keine Überraschungen. Hinterlasse mir gern deine Email, dann sichern wir dir den Early Access.",
     nextAction: "request_email",
     mode: "email",
     patch: { next_action: "request_email", intent_strength: 3 },
@@ -236,7 +236,7 @@ export const TREE: Record<string, TreeNode> = {
   pitch_crew_license: {
     id: "pitch_crew_license",
     reply:
-      "Verständlich. Anhand ehrlicher Bewertungen zeigen wir dir, wo Einsteiger und Crew-Suchende gut aufgehoben sind. Hinterlasse mir gern deine Email, dann melden wir uns zum Start der Alpha-Phase.",
+      "Verständlich. In unserer Datenbank findest du zu jedem Boot echte Fotos, die genaue Ausstattung und Bewertungen verifizierter Skipper – so siehst du sofort, wo Einsteiger und Crew-Suchende gut aufgehoben sind. Hinterlasse mir gern deine Email, dann sichern wir dir den Early Access.",
     nextAction: "request_email",
     mode: "email",
     patch: { next_action: "request_email", intent_strength: 2 },
@@ -247,7 +247,7 @@ export const TREE: Record<string, TreeNode> = {
   wrap_up_email: {
     id: "wrap_up_email",
     reply:
-      "Vielen Dank – du stehst auf der Liste ⚓ Wer drei weitere Segler einlädt, erhält Lifetime-Pro. Wir melden uns zum Start der Alpha-Phase.",
+      "Vielen Dank – dein Early Access ist gesichert ⚓ Wer drei weitere Segler einlädt, erhält Lifetime-Pro. Wir melden uns, sobald es losgeht.",
     nextAction: "wrap_up",
     terminal: true,
     leadReady: true,
@@ -259,7 +259,7 @@ export const TREE: Record<string, TreeNode> = {
   email_decline: {
     id: "email_decline",
     reply:
-      "Kein Problem, ich dränge dich nicht. Wir würden uns nur einmal zum Start der Alpha-Phase melden – kein Newsletter, kein Spam. Wenn du magst, beantworte ich dir vorher noch offene Fragen, oder du hinterlässt deine Email doch noch.",
+      "Kein Problem, ich dränge dich nicht. Wir würden dich nur einmal benachrichtigen, sobald der Early Access startet – kein Newsletter, kein Spam. Wenn du magst, beantworte ich dir vorher noch offene Fragen, oder du hinterlässt deine Email doch noch.",
     nextAction: "request_email",
     mode: "email",
     patch: { next_action: "request_email" },

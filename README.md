@@ -2,7 +2,7 @@
 
 Mobile-first Chat-Web-App. "Crew" ist der digitale Hafen-Buddy, der frisch
 eingescannte QR-Code-Besucher anspricht, ihren Status + Pain Point herausfindet
-und am Ende die Email für die Alpha-Warteliste einsammelt.
+und am Ende die Email für den Early Access einsammelt.
 
 Stack: **Next.js 15 (App Router) · Tailwind v4 · Anthropic SDK (Claude Opus 4.8)**.
 

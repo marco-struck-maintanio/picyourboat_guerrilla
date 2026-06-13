@@ -60,20 +60,19 @@ export default function Home() {
 
   const node: TreeNode | null = mode === "tree" ? TREE[nodeId] : null;
 
-  const ended =
+  // "wrappedUp" = es gab eine abschließende Nachricht. Wichtig: das beendet den
+  // Chat NICHT — die Eingabe bleibt offen, wir gehen immer davon aus, dass der
+  // User noch antworten oder fragen möchte. Es blendet nur die Buttons aus.
+  const wrappedUp =
     (mode === "tree" && !!node?.terminal) ||
     (mode === "claude" && state.next_action === "goodbye");
 
-  const wantsEmail =
-    (mode === "tree" && node?.mode === "email") ||
-    (mode === "claude" &&
-      (state.next_action === "request_email" ||
-        state.next_action === "confirm_email"));
-
-  // Buttons nur im Tree-Modus, solange der Node welche hat, nicht beendet und
+  // Buttons nur im Tree-Modus, solange der Node welche hat, kein Abschluss und
   // Crew gerade nicht "denkt".
   const quickReplies =
-    mode === "tree" && !ended && !thinking ? (node?.quickReplies ?? null) : null;
+    mode === "tree" && !wrappedUp && !thinking
+      ? (node?.quickReplies ?? null)
+      : null;
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -136,7 +135,7 @@ export default function Home() {
   }
 
   function onQuickReply(qr: QuickReply) {
-    if (loading || thinking || ended) return;
+    if (loading || thinking) return;
     const target = TREE[qr.next];
     if (!target) return;
     applyNode(target, qr.send ?? qr.label, qr.patch);
@@ -188,12 +187,14 @@ export default function Home() {
 
   function send() {
     const text = input.trim();
-    if (!text || loading || thinking || ended) return;
+    // Kein Abbruch nach einem Abschluss: der Chat bleibt immer offen, wir gehen
+    // davon aus, dass der User noch antworten oder fragen möchte.
+    if (!text || loading || thinking) return;
     setInput("");
 
-    // Im Email-Schritt: freien Input auswerten. Steckt eine Email drin, ziehen
-    // wir sie raus (token-frei, clientseitig). Sonst ist es eine Frage → Claude
-    // (wir erwarten immer auch eine Frage statt einer Adresse).
+    // Steckt im Tree-Schritt eine Email im Text, ziehen wir sie token-frei raus
+    // und schließen ab. Alles andere ist eine normale Antwort/Frage → Claude.
+    // Wir drängen nie auf eine Email; sie wird nur erkannt, wenn sie dasteht.
     if (mode === "tree" && node?.mode === "email") {
       const email = extractEmail(text);
       if (email) {
@@ -258,12 +259,6 @@ export default function Home() {
             {error}
           </div>
         )}
-
-        {ended && (
-          <div className="animate-surface mx-auto mt-2 text-center text-xs text-foam/45">
-            Vielen Dank und allzeit gute Fahrt ⛵
-          </div>
-        )}
       </div>
 
       {/* Eingabe */}
@@ -284,35 +279,24 @@ export default function Home() {
           </div>
         )}
 
-        {wantsEmail && !ended && (
-          <div className="mb-2 px-1 text-[11px] font-medium text-rope">
-            ✦ Deine Email für die Alpha-Warteliste — oder stell mir eine Frage
-          </div>
-        )}
         <div className="flex items-end gap-2">
           <input
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={onKeyDown}
-            disabled={loading || thinking || ended}
-            type={wantsEmail ? "email" : "text"}
-            inputMode={wantsEmail ? "email" : "text"}
-            autoComplete={wantsEmail ? "email" : "off"}
+            disabled={loading || thinking}
+            type="text"
+            inputMode="text"
+            autoComplete="off"
             placeholder={
-              ended
-                ? "Gespräch beendet"
-                : wantsEmail
-                  ? "name@beispiel.de oder eine Frage"
-                  : quickReplies
-                    ? "…oder frei formulieren"
-                    : "Nachricht eingeben…"
+              quickReplies ? "…oder frei formulieren" : "Nachricht eingeben…"
             }
             className="min-w-0 flex-1 rounded-2xl bg-foam/10 px-4 py-3 text-[15px] text-sand placeholder:text-foam/35 outline-none ring-1 ring-foam/15 transition focus:ring-rope/60 disabled:opacity-50"
           />
           <button
             onClick={send}
-            disabled={loading || thinking || ended || !input.trim()}
+            disabled={loading || thinking || !input.trim()}
             aria-label="Senden"
             className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rope text-hull-deep transition hover:bg-rope-dark active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
           >
