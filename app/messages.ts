@@ -16,7 +16,7 @@ type UIStrings = {
 const MESSAGES: Record<Locale, UIStrings> = {
   de: {
     heroTitle: "Jede Reise hat ihre Geschichte.",
-    begin: "Nach oben wischen zum Start",
+    begin: "Tippen zum Start",
     placeholder: "Nachricht eingeben…",
     placeholderEmail: "Deine Email oder eine Frage",
     send: "Senden",
@@ -27,7 +27,7 @@ const MESSAGES: Record<Locale, UIStrings> = {
   },
   en: {
     heroTitle: "Every Journey Has a Story.",
-    begin: "Swipe up to begin",
+    begin: "Tap to begin",
     placeholder: "Type a message…",
     placeholderEmail: "Your email or a question",
     send: "Send",

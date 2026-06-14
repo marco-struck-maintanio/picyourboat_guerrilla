@@ -10,15 +10,14 @@
   --font-display: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-html {
+html,
+body {
   height: 100%;
-  /* Dokument-Scroll mit Snap: nötig, damit Mobile Safari beim Scrollen seine
-     Leisten (Adress-/Statusbar) einklappt — ein innerer Scroll-Container tut das nicht. */
-  scroll-snap-type: y mandatory;
+  /* Feste Viewport-Seiten, kein Dokument-Scroll (kein Flackern auf iOS). */
+  overflow: hidden;
 }
 
 body {
-  min-height: 100%;
   /* Fröhliches See-/Himmelblau: helles Wasser unten, tieferes Blau oben (damit
      die helle Header-Schrift lesbar bleibt), plus ein warmer Sonnen-Schimmer. */
   background:

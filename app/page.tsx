@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   CrewResponse,
   EMAIL_SUCCESS_ID,
@@ -50,8 +50,8 @@ function progressStep(na: LeadState["next_action"]): number {
   }
 }
 
-// Anfangs-Frames: Intro/Hero (Sektion 0) + erste Frage (Sektion 1). So liegt der
-// Intro im selben Scroll-Feed → das Dokument scrollt von Anfang an.
+// Es wird immer nur die aktive (letzte) Seite gerendert; Antworten hängen die
+// nächste Seite an und ersetzen die sichtbare. Start = Intro/Hero.
 function introFrame(): Frame {
   return { key: 0, kind: "intro", scene: "opener" };
 }
@@ -59,7 +59,7 @@ function openingFrame(): Frame {
   return { key: 1, kind: "tree", nodeId: ROOT_ID, scene: TREE[ROOT_ID].scene ?? "deck" };
 }
 function initialFrames(): Frame[] {
-  return [introFrame(), openingFrame()];
+  return [introFrame()];
 }
 
 export default function Home() {
@@ -77,34 +77,18 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showHeader, setShowHeader] = useState(false); // Kopf erst nach dem Intro
 
-  const activeSectionRef = useRef<HTMLElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const nextKey = useRef(2);
-  const prevLen = useRef(2);
 
   const step = progressStep(state.next_action);
-  const activeIndex = frames.length - 1;
+  const current = frames[frames.length - 1]; // nur die aktive Seite wird gerendert
+  const showHeader = current.kind !== "intro"; // Kopf erst nach dem Intro
 
-  // Nur bei NEU angehängtem Frame zum aktiven Schritt scrollen — nicht beim
-  // ersten Render (sonst würde der Intro übersprungen).
-  useEffect(() => {
-    if (frames.length > prevLen.current) {
-      requestAnimationFrame(() =>
-        activeSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
-      );
-    }
-    prevLen.current = frames.length;
-  }, [frames.length]);
-
-  // Kopf-Overlay (Logo + Fortschritt) erst einblenden, sobald der Intro
-  // weggescrollt ist.
-  useEffect(() => {
-    const onScroll = () => setShowHeader(window.scrollY > window.innerHeight * 0.5);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  // Vom Intro zur ersten Frage (Opening ist im Verlauf bereits geseedet).
+  function begin() {
+    setFrames((f) => [...f, openingFrame()]);
+  }
 
   // Tree-Übergang: State + Verlauf fortschreiben, Frame anhängen.
   function appendTree(targetId: string, userText: string, patch?: Partial<LeadState>) {
@@ -204,8 +188,8 @@ export default function Home() {
     if (!text || loading) return;
     setInput("");
 
-    const active = frames[activeIndex];
-    const activeNode = active.kind === "tree" && active.nodeId ? TREE[active.nodeId] : null;
+    const activeNode =
+      current.kind === "tree" && current.nodeId ? TREE[current.nodeId] : null;
 
     // Email-Schritt: steckt eine Email im Text → token-frei abschließen.
     if (activeNode?.mode === "email" && extractEmail(text)) {
@@ -245,42 +229,32 @@ export default function Home() {
     document.documentElement.style.scrollSnapType = "";
   }
 
-  // ── Gesprächs-Feed (vertikales Scroll-Snap, Intro = Sektion 0) ─────────────
+  // ── Feste Viewport-Seite: immer nur die aktive Seite, kein Scroll ──────────
   return (
-    <div className="relative mx-auto w-full max-w-md bg-hull-deep text-white">
-      {/* Sektionen liegen im normalen Dokumentfluss → das Dokument scrollt
-          (nötig, damit Mobile Safari seine Leisten einklappt). */}
-      {frames.map((f, i) => (
-        <FrameSection
-          key={f.key}
-          frame={f}
-          active={i === activeIndex}
-          sectionRef={i === activeIndex ? activeSectionRef : undefined}
-          locale={locale}
-          loading={loading && i === activeIndex}
-          error={i === activeIndex ? error : null}
-          busy={busy}
-          input={input}
-          setInput={setInput}
-          onPill={onPill}
-          onKeyDown={onKeyDown}
-          send={send}
-          restart={restart}
-          inputRef={inputRef}
-          onInputFocus={onInputFocus}
-          onInputBlur={onInputBlur}
-          u={u}
-        />
-      ))}
+    <div className="relative mx-auto h-[100dvh] w-full max-w-md overflow-hidden bg-hull-deep text-white">
+      <FrameSection
+        key={current.key}
+        frame={current}
+        active
+        locale={locale}
+        loading={loading}
+        error={error}
+        busy={busy}
+        input={input}
+        setInput={setInput}
+        onPill={onPill}
+        onKeyDown={onKeyDown}
+        send={send}
+        restart={restart}
+        inputRef={inputRef}
+        onInputFocus={onInputFocus}
+        onInputBlur={onInputBlur}
+        onBegin={begin}
+        u={u}
+      />
 
-      {/* Scroll-Puffer: hält die aktive Sektion vom absoluten Dokument-Ende fern,
-          damit Mobile Safari die Leiste nicht wieder einblendet. Kein Snap-Ziel
-          (Snap zieht aus dem Puffer auf die letzte Sektion zurück). */}
-      <div aria-hidden className="h-[75vh] w-full" />
-
-      {/* Fixes Kopf-Overlay (viewport-fix, auf Spaltenbreite zentriert).
-          Sprach-Umschalter immer sichtbar; Logo + Fortschritt erst nach dem Intro. */}
-      <div className="pointer-events-none fixed inset-x-0 top-0 z-20 mx-auto w-full max-w-md px-5 pt-[max(1rem,env(safe-area-inset-top))]">
+      {/* Kopf-Overlay: Sprach-Umschalter immer; Logo + Fortschritt erst nach dem Intro */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 px-5 pt-[max(1rem,env(safe-area-inset-top))]">
         <div className="flex items-center">
           <img
             src="/pyb-logo-h.png"
@@ -339,6 +313,7 @@ function FrameSection({
   inputRef,
   onInputFocus,
   onInputBlur,
+  onBegin,
   u,
 }: {
   frame: Frame;
@@ -357,6 +332,7 @@ function FrameSection({
   inputRef: React.RefObject<HTMLInputElement | null>;
   onInputFocus: () => void;
   onInputBlur: () => void;
+  onBegin: () => void;
   u: ReturnType<typeof ui>;
 }) {
   // ── Intro-/Hero-Sektion (Sektion 0) ───────────────────────────────────────
@@ -364,7 +340,8 @@ function FrameSection({
     return (
       <section
         ref={sectionRef}
-        className="relative h-[100dvh] w-full snap-start overflow-hidden"
+        onClick={onBegin}
+        className="relative h-[100dvh] w-full cursor-pointer overflow-hidden"
       >
         <img src={`/scenes/${frame.scene}.jpg`} alt="" className="absolute inset-0 h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-transparent to-black/80" />
@@ -380,7 +357,7 @@ function FrameSection({
           </h1>
           <BrushAccent />
           <button
-            onClick={() => window.scrollTo({ top: window.innerHeight, behavior: "smooth" })}
+            onClick={onBegin}
             className="mt-7 flex flex-col items-center gap-1 self-center text-white/85"
           >
             <span className="text-sm font-medium drop-shadow">{u.begin}</span>
