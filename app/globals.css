@@ -45,22 +45,6 @@ body {
   animation: frame 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
-/* Sanftes Auftauchen neuer Nachrichten */
-@keyframes surface {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-surface {
-  animation: surface 0.32s ease-out both;
-}
-
 /* Tipp-Punkte */
 @keyframes bob {
   0%, 80%, 100% {

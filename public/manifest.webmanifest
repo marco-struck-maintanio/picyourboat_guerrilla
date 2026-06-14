@@ -1,7 +1,7 @@
 {
-  "name": "Crew · PicYourBoat",
-  "short_name": "Crew",
-  "description": "Dein Hafen-Buddy. Frisch vom QR-Code reingestolpert?",
+  "name": "Pick Your Boat",
+  "short_name": "PYB",
+  "description": "Die ehrliche Bewertungsplattform für Charter-Yachten – echte Fotos, echte Preise, echte Reviews.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#07181f",

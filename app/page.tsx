@@ -216,19 +216,6 @@ export default function Home() {
     }
   }
 
-  // Beim Fokus ins Textfeld: Scroll-Snap aus (sonst kann iOS das Feld nicht über
-  // die Tastatur schieben) und das Feld aktiv in den sichtbaren Bereich scrollen.
-  function onInputFocus() {
-    document.documentElement.style.scrollSnapType = "none";
-    window.setTimeout(
-      () => inputRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }),
-      300,
-    );
-  }
-  function onInputBlur() {
-    document.documentElement.style.scrollSnapType = "";
-  }
-
   // ── Feste Viewport-Seite: immer nur die aktive Seite, kein Scroll ──────────
   return (
     <div className="relative mx-auto h-[100dvh] w-full max-w-md overflow-hidden bg-hull-deep text-white">
@@ -247,8 +234,6 @@ export default function Home() {
         send={send}
         restart={restart}
         inputRef={inputRef}
-        onInputFocus={onInputFocus}
-        onInputBlur={onInputBlur}
         onBegin={begin}
         u={u}
       />
@@ -311,8 +296,6 @@ function FrameSection({
   send,
   restart,
   inputRef,
-  onInputFocus,
-  onInputBlur,
   onBegin,
   u,
 }: {
@@ -330,8 +313,6 @@ function FrameSection({
   send: () => void;
   restart: () => void;
   inputRef: React.RefObject<HTMLInputElement | null>;
-  onInputFocus: () => void;
-  onInputBlur: () => void;
   onBegin: () => void;
   u: ReturnType<typeof ui>;
 }) {
@@ -454,8 +435,6 @@ function FrameSection({
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={onKeyDown}
-                onFocus={onInputFocus}
-                onBlur={onInputBlur}
                 disabled={loading}
                 type="text"
                 inputMode={isEmail ? "email" : "text"}

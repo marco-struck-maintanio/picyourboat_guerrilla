@@ -2,8 +2,9 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Crew · PicYourBoat",
-  description: "Dein Hafen-Buddy. Frisch vom QR-Code reingestolpert?",
+  title: "PYB · Pick Your Boat",
+  description:
+    "Die ehrliche Bewertungsplattform für Charter-Yachten – echte Fotos, echte Preise, echte Reviews.",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
