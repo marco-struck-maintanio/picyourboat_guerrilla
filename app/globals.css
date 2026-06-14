@@ -13,11 +13,13 @@
 html,
 body {
   height: 100%;
-  /* Feste Viewport-Seiten, kein Dokument-Scroll (kein Flackern auf iOS). */
-  overflow: hidden;
 }
 
 body {
+  /* Genau eine Seite in Viewport-Höhe → kein echtes Scrollen/Flackern. body
+     bleibt aber Scroll-Root ohne overscroll-Sperre, damit iOS Pull-to-Refresh
+     am oberen Rand funktioniert. Nur horizontales Überlaufen unterbinden. */
+  overflow-x: hidden;
   /* Fröhliches See-/Himmelblau: helles Wasser unten, tieferes Blau oben (damit
      die helle Header-Schrift lesbar bleibt), plus ein warmer Sonnen-Schimmer. */
   background:
@@ -25,7 +27,6 @@ body {
     radial-gradient(135% 105% at 50% 118%, #3a93c6 0%, #1f6c9a 36%, #15527a 70%, #0e3f5d 100%);
   color: var(--color-sand);
   -webkit-font-smoothing: antialiased;
-  overscroll-behavior-y: none;
 }
 
 /* Wechsel zwischen Story-Frames: sanft einblenden + leicht hochschieben */
