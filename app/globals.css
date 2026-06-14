@@ -16,8 +16,11 @@ body {
 }
 
 body {
+  /* Fröhliches See-/Himmelblau: helles Wasser unten, tieferes Blau oben (damit
+     die helle Header-Schrift lesbar bleibt), plus ein warmer Sonnen-Schimmer. */
   background:
-    radial-gradient(120% 80% at 50% -10%, #103340 0%, var(--color-hull) 45%, var(--color-hull-deep) 100%);
+    radial-gradient(72% 48% at 50% 6%, rgba(255, 233, 175, 0.16), transparent 62%),
+    radial-gradient(135% 105% at 50% 118%, #3a93c6 0%, #1f6c9a 36%, #15527a 70%, #0e3f5d 100%);
   color: var(--color-sand);
   -webkit-font-smoothing: antialiased;
   overscroll-behavior-y: none;

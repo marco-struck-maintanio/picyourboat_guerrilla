@@ -262,7 +262,7 @@ export default function Home() {
       </div>
 
       {/* Eingabe */}
-      <div className="border-t border-foam/10 bg-hull-deep/40 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+      <div className="border-t border-white/40 bg-foam/80 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
         {/* Vorgefertigte Antworten — 0 Token, kein Claude-Call */}
         {quickReplies && (
           <div className="mb-3 flex flex-wrap gap-2">
@@ -271,7 +271,7 @@ export default function Home() {
                 key={qr.next + qr.label}
                 onClick={() => onQuickReply(qr)}
                 disabled={loading}
-                className="animate-surface rounded-full bg-foam/10 px-3.5 py-2 text-[13px] font-medium text-sand ring-1 ring-foam/15 transition hover:bg-rope/20 hover:ring-rope/50 active:scale-95 disabled:opacity-40"
+                className="animate-surface rounded-full bg-white/75 px-3.5 py-2 text-[13px] font-medium text-hull-deep ring-1 ring-hull/15 transition hover:bg-rope/25 hover:ring-rope/60 active:scale-95 disabled:opacity-40"
               >
                 {qr.label}
               </button>
@@ -292,7 +292,7 @@ export default function Home() {
             placeholder={
               quickReplies ? "…oder frei formulieren" : "Nachricht eingeben…"
             }
-            className="min-w-0 flex-1 rounded-2xl bg-foam/10 px-4 py-3 text-[15px] text-sand placeholder:text-foam/35 outline-none ring-1 ring-foam/15 transition focus:ring-rope/60 disabled:opacity-50"
+            className="min-w-0 flex-1 rounded-2xl bg-white/80 px-4 py-3 text-[15px] text-hull-deep placeholder:text-hull-deep/40 outline-none ring-1 ring-hull/15 transition focus:ring-rope disabled:opacity-50"
           />
           <button
             onClick={send}
