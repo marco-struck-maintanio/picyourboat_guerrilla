@@ -258,6 +258,11 @@ export default function Home() {
         />
       ))}
 
+      {/* Scroll-Puffer: hält die aktive Sektion vom absoluten Dokument-Ende fern,
+          damit Mobile Safari die Leiste nicht wieder einblendet. Kein Snap-Ziel
+          (Snap zieht aus dem Puffer auf die letzte Sektion zurück). */}
+      <div aria-hidden className="h-[75vh] w-full" />
+
       {/* Fixes Kopf-Overlay (viewport-fix, auf Spaltenbreite zentriert).
           Sprach-Umschalter immer sichtbar; Logo + Fortschritt erst nach dem Intro. */}
       <div className="pointer-events-none fixed inset-x-0 top-0 z-20 mx-auto w-full max-w-md px-5 pt-[max(1rem,env(safe-area-inset-top))]">
