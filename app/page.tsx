@@ -459,7 +459,10 @@ function FrameSection({
                 disabled={loading}
                 type="text"
                 inputMode={isEmail ? "email" : "text"}
-                autoComplete={isEmail ? "email" : "off"}
+                autoComplete="off"
+                autoCorrect="off"
+                data-1p-ignore
+                data-lpignore="true"
                 placeholder={isEmail ? u.placeholderEmail : pills ? u.tapHint : u.placeholder}
                 className="min-w-0 flex-1 rounded-2xl bg-white/85 px-4 py-3 text-[15px] text-hull-deep placeholder:text-hull-deep/40 outline-none ring-1 ring-white/40 backdrop-blur transition focus:ring-rope disabled:opacity-60"
               />
