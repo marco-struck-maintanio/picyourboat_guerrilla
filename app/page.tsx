@@ -23,7 +23,7 @@ type ApiMessage = { role: "user" | "assistant"; content: string };
 // Ein gerenderter Vollbild-Abschnitt im Scroll-Feed.
 type Frame = {
   key: number;
-  kind: "tree" | "claude";
+  kind: "intro" | "tree" | "claude";
   nodeId?: string; // bei kind "tree"
   reply?: string; // bei kind "claude" (bereits aufgelöster Text)
   scene: string;
@@ -50,16 +50,23 @@ function progressStep(na: LeadState["next_action"]): number {
   }
 }
 
+// Anfangs-Frames: Intro/Hero (Sektion 0) + erste Frage (Sektion 1). So liegt der
+// Intro im selben Scroll-Feed → das Dokument scrollt von Anfang an.
+function introFrame(): Frame {
+  return { key: 0, kind: "intro", scene: "opener" };
+}
 function openingFrame(): Frame {
-  return { key: 0, kind: "tree", nodeId: ROOT_ID, scene: TREE[ROOT_ID].scene ?? "deck" };
+  return { key: 1, kind: "tree", nodeId: ROOT_ID, scene: TREE[ROOT_ID].scene ?? "deck" };
+}
+function initialFrames(): Frame[] {
+  return [introFrame(), openingFrame()];
 }
 
 export default function Home() {
   const [locale, setLocale] = useState<Locale>("de");
   const u = ui(locale);
 
-  const [started, setStarted] = useState(false); // Intro-/Hero-Screen vorgeschaltet
-  const [frames, setFrames] = useState<Frame[]>([openingFrame()]);
+  const [frames, setFrames] = useState<Frame[]>(initialFrames);
   const [state, setState] = useState<LeadState>(INITIAL_STATE);
   const [leadReady, setLeadReady] = useState(false);
   const [history, setHistory] = useState<ApiMessage[]>(() => [
@@ -70,26 +77,34 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showHeader, setShowHeader] = useState(false); // Kopf erst nach dem Intro
 
   const activeSectionRef = useRef<HTMLElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const touchStartY = useRef<number | null>(null);
-  const nextKey = useRef(1);
+  const nextKey = useRef(2);
+  const prevLen = useRef(2);
 
   const step = progressStep(state.next_action);
   const activeIndex = frames.length - 1;
 
-  // Nach jedem neuen Frame ans Ende scrollen (zum aktiven Schritt).
+  // Nur bei NEU angehängtem Frame zum aktiven Schritt scrollen — nicht beim
+  // ersten Render (sonst würde der Intro übersprungen).
   useEffect(() => {
-    if (!started) return;
-    requestAnimationFrame(() =>
-      activeSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
-    );
-  }, [frames.length, started]);
+    if (frames.length > prevLen.current) {
+      requestAnimationFrame(() =>
+        activeSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      );
+    }
+    prevLen.current = frames.length;
+  }, [frames.length]);
 
-  function begin() {
-    setStarted(true);
-  }
+  // Kopf-Overlay (Logo + Fortschritt) erst einblenden, sobald der Intro
+  // weggescrollt ist.
+  useEffect(() => {
+    const onScroll = () => setShowHeader(window.scrollY > window.innerHeight * 0.5);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   // Tree-Übergang: State + Verlauf fortschreiben, Frame anhängen.
   function appendTree(targetId: string, userText: string, patch?: Partial<LeadState>) {
@@ -201,7 +216,7 @@ export default function Home() {
   }
 
   function restart() {
-    setFrames([openingFrame()]);
+    setFrames(initialFrames());
     setState(INITIAL_STATE);
     setLeadReady(false);
     setHistory([{ role: "assistant", content: JSON.stringify(openingResponse(locale)) }]);
@@ -217,75 +232,7 @@ export default function Home() {
     }
   }
 
-  // ── Intro-/Hero-Screen ─────────────────────────────────────────────────────
-  if (!started) {
-    return (
-      <div
-        onClick={begin}
-        onTouchStart={(e) => (touchStartY.current = e.touches[0].clientY)}
-        onTouchEnd={(e) => {
-          const sy = touchStartY.current;
-          if (sy !== null && sy - e.changedTouches[0].clientY > 40) begin();
-          touchStartY.current = null;
-        }}
-        className="relative mx-auto h-[100dvh] w-full max-w-md cursor-pointer overflow-hidden bg-hull-deep text-white select-none"
-      >
-        <img src="/scenes/opener.jpg" alt="" className="absolute inset-0 h-full w-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-transparent to-black/80" />
-
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className="absolute right-5 top-[max(1rem,env(safe-area-inset-top))] z-20 flex items-center gap-0.5 rounded-full bg-white/15 p-0.5 text-[11px] font-bold ring-1 ring-white/25 backdrop-blur"
-        >
-          {(["de", "en"] as Locale[]).map((l) => (
-            <button
-              key={l}
-              onClick={(e) => {
-                e.stopPropagation();
-                setLocale(l);
-              }}
-              className={`rounded-full px-2.5 py-1 transition ${
-                locale === l ? "bg-white text-hull-deep" : "text-white/80"
-              }`}
-            >
-              {l.toUpperCase()}
-            </button>
-          ))}
-        </div>
-
-        <div className="absolute inset-0 flex flex-col px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[16%]">
-          <img
-            src="/pyb-logo-light.png"
-            alt="Pick Your Boat"
-            className="animate-frame mx-auto w-64 drop-shadow-[0_6px_22px_rgba(0,0,0,0.5)]"
-          />
-          <div className="flex-1" />
-          <h1 className="animate-frame text-[44px] font-extrabold leading-[1.03] tracking-tight drop-shadow-[0_2px_14px_rgba(0,0,0,0.6)]">
-            {u.heroTitle}
-          </h1>
-          <BrushAccent />
-          <div className="mt-7 flex flex-col items-center gap-1 text-white/85">
-            <span className="text-sm font-medium drop-shadow">{u.begin}</span>
-            <svg
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="animate-bounce"
-            >
-              <path d="m6 15 6-6 6 6" />
-            </svg>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Gesprächs-Feed (vertikales Scroll-Snap) ────────────────────────────────
+  // ── Gesprächs-Feed (vertikales Scroll-Snap, Intro = Sektion 0) ─────────────
   return (
     <div className="relative mx-auto w-full max-w-md bg-hull-deep text-white">
       {/* Sektionen liegen im normalen Dokumentfluss → das Dokument scrollt
@@ -311,13 +258,16 @@ export default function Home() {
         />
       ))}
 
-      {/* Fixes Kopf-Overlay (viewport-fix, auf Spaltenbreite zentriert) */}
+      {/* Fixes Kopf-Overlay (viewport-fix, auf Spaltenbreite zentriert).
+          Sprach-Umschalter immer sichtbar; Logo + Fortschritt erst nach dem Intro. */}
       <div className="pointer-events-none fixed inset-x-0 top-0 z-20 mx-auto w-full max-w-md px-5 pt-[max(1rem,env(safe-area-inset-top))]">
         <div className="flex items-center">
           <img
             src="/pyb-logo-h.png"
             alt="Pick Your Boat"
-            className="h-8 w-auto drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
+            className={`h-8 w-auto drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] transition-opacity duration-300 ${
+              showHeader ? "opacity-100" : "opacity-0"
+            }`}
           />
           <div className="pointer-events-auto ml-auto flex items-center gap-0.5 rounded-full bg-white/15 p-0.5 text-[11px] font-bold ring-1 ring-white/25 backdrop-blur">
             {(["de", "en"] as Locale[]).map((l) => (
@@ -333,7 +283,11 @@ export default function Home() {
             ))}
           </div>
         </div>
-        <div className="mt-3 flex gap-1.5">
+        <div
+          className={`mt-3 flex gap-1.5 transition-opacity duration-300 ${
+            showHeader ? "opacity-100" : "opacity-0"
+          }`}
+        >
           {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
             <span
               key={i}
@@ -381,6 +335,50 @@ function FrameSection({
   inputRef: React.RefObject<HTMLInputElement | null>;
   u: ReturnType<typeof ui>;
 }) {
+  // ── Intro-/Hero-Sektion (Sektion 0) ───────────────────────────────────────
+  if (frame.kind === "intro") {
+    return (
+      <section
+        ref={sectionRef}
+        className="relative h-[100dvh] w-full snap-start overflow-hidden"
+      >
+        <img src={`/scenes/${frame.scene}.jpg`} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-transparent to-black/80" />
+        <div className="absolute inset-0 flex flex-col px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[16%]">
+          <img
+            src="/pyb-logo-light.png"
+            alt="Pick Your Boat"
+            className="animate-frame mx-auto w-64 drop-shadow-[0_6px_22px_rgba(0,0,0,0.5)]"
+          />
+          <div className="flex-1" />
+          <h1 className="animate-frame text-[44px] font-extrabold leading-[1.03] tracking-tight drop-shadow-[0_2px_14px_rgba(0,0,0,0.6)]">
+            {u.heroTitle}
+          </h1>
+          <BrushAccent />
+          <button
+            onClick={() => window.scrollTo({ top: window.innerHeight, behavior: "smooth" })}
+            className="mt-7 flex flex-col items-center gap-1 self-center text-white/85"
+          >
+            <span className="text-sm font-medium drop-shadow">{u.begin}</span>
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="animate-bounce"
+            >
+              <path d="m6 15 6-6 6 6" />
+            </svg>
+          </button>
+        </div>
+      </section>
+    );
+  }
+
   const node = frame.kind === "tree" && frame.nodeId ? TREE[frame.nodeId] : null;
   const reply = node ? t(node.reply, locale) : (frame.reply ?? "");
   const pills = node?.quickReplies ?? null;
