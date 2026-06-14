@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "tree:export": "node scripts/tree-export.mjs",
+    "tree:import": "node scripts/tree-import.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.0",
@@ -19,6 +21,7 @@
     "@types/node": "^22.18.6",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
+    "exceljs": "^4.4.0",
     "tailwindcss": "^4.1.13",
     "typescript": "^5.9.2"
   }

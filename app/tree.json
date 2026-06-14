@@ -1,0 +1,403 @@
+{
+  "root": "opening",
+  "emailSuccessNode": "wrap_up_email",
+  "nodes": {
+    "opening": {
+      "reply": "Willkommen bei PicYourBoat. Damit ich dich richtig einordnen kann: Bist du gerade selbst auf dem Wasser, in der Planung oder noch am Überlegen?",
+      "nextAction": "ask_status",
+      "quickReplies": [
+        {
+          "label": "Auf dem Wasser 🌊",
+          "next": "pain_sailing",
+          "patch": {
+            "status": "sailing_now"
+          }
+        },
+        {
+          "label": "In der Planung 🗺️",
+          "next": "pain_planning",
+          "patch": {
+            "status": "planning"
+          }
+        },
+        {
+          "label": "Noch am Überlegen 💭",
+          "next": "pain_dreaming",
+          "patch": {
+            "status": "dreaming"
+          }
+        },
+        {
+          "label": "Ich verchartere selbst ⛵",
+          "next": "pain_charterer",
+          "patch": {
+            "status": "charterer"
+          }
+        },
+        {
+          "label": "Profi (Schule/Skipper) 🧭",
+          "next": "pain_pro",
+          "patch": {
+            "status": "pro"
+          }
+        }
+      ]
+    },
+    "pain_sailing": {
+      "reply": "Dann kennst du den Ablauf. Was war bei diesem Boot bisher das größte Ärgernis?",
+      "nextAction": "ask_pain",
+      "quickReplies": [
+        {
+          "label": "Versteckte Kosten 💸",
+          "next": "pitch_hidden_costs",
+          "patch": {
+            "pain_points": [
+              "hidden_costs"
+            ]
+          }
+        },
+        {
+          "label": "Boot wich von den Fotos ab 📸",
+          "next": "pitch_boat_mismatch",
+          "patch": {
+            "pain_points": [
+              "boat_mismatch"
+            ]
+          }
+        },
+        {
+          "label": "Probleme bei der Übergabe ⚓",
+          "next": "pitch_handover",
+          "patch": {
+            "pain_points": [
+              "handover_chaos"
+            ]
+          }
+        },
+        {
+          "label": "Vercharterer schlecht erreichbar 📵",
+          "next": "pitch_unresponsive",
+          "patch": {
+            "pain_points": [
+              "vendor_unresponsive"
+            ]
+          }
+        },
+        {
+          "label": "Etwas anderes…",
+          "next": "pain_other",
+          "send": "Etwas anderes…",
+          "patch": {
+            "pain_points": [
+              "other"
+            ]
+          }
+        }
+      ]
+    },
+    "pain_planning": {
+      "reply": "Eine gute Phase für verlässliche Informationen. Was ist bei der Suche aktuell das größte Problem?",
+      "nextAction": "ask_pain",
+      "quickReplies": [
+        {
+          "label": "Ich traue den Bewertungen nicht 🌟",
+          "next": "pitch_fake_reviews",
+          "patch": {
+            "pain_points": [
+              "fake_reviews"
+            ]
+          }
+        },
+        {
+          "label": "Preise sind intransparent 💸",
+          "next": "pitch_price",
+          "patch": {
+            "pain_points": [
+              "price"
+            ]
+          }
+        },
+        {
+          "label": "Finde kein passendes Boot ⛵",
+          "next": "pitch_boat_mismatch",
+          "patch": {
+            "pain_points": [
+              "boat_mismatch"
+            ]
+          }
+        },
+        {
+          "label": "Etwas anderes…",
+          "next": "pain_other",
+          "send": "Etwas anderes…",
+          "patch": {
+            "pain_points": [
+              "other"
+            ]
+          }
+        }
+      ]
+    },
+    "pain_dreaming": {
+      "reply": "Verständlich. Was hält dich aktuell noch ab?",
+      "nextAction": "ask_pain",
+      "quickReplies": [
+        {
+          "label": "Der Preis 💸",
+          "next": "pitch_price",
+          "patch": {
+            "pain_points": [
+              "price"
+            ]
+          }
+        },
+        {
+          "label": "Fehlende Crew 🧑‍🤝‍🧑",
+          "next": "pitch_crew_license",
+          "patch": {
+            "pain_points": [
+              "no_crew"
+            ]
+          }
+        },
+        {
+          "label": "Kein Skipperschein 🪪",
+          "next": "pitch_crew_license",
+          "patch": {
+            "pain_points": [
+              "no_license"
+            ]
+          }
+        },
+        {
+          "label": "Etwas anderes…",
+          "next": "pain_other",
+          "send": "Etwas anderes…",
+          "patch": {
+            "pain_points": [
+              "other"
+            ]
+          }
+        }
+      ]
+    },
+    "pain_charterer": {
+      "reply": "Die Anbieter-Perspektive interessiert uns besonders. Was stört dich an den heutigen Bewertungsplattformen?",
+      "nextAction": "ask_pain",
+      "quickReplies": [
+        {
+          "label": "Fake-Bewertungen 🌟",
+          "next": "pitch_fake_reviews",
+          "patch": {
+            "pain_points": [
+              "fake_reviews"
+            ]
+          }
+        },
+        {
+          "label": "Zu hohe Plattform-Gebühren 💸",
+          "next": "pitch_price",
+          "patch": {
+            "pain_points": [
+              "price"
+            ]
+          }
+        },
+        {
+          "label": "Gäste geben kaum Feedback 📵",
+          "next": "pitch_unresponsive",
+          "patch": {
+            "pain_points": [
+              "vendor_unresponsive"
+            ]
+          }
+        },
+        {
+          "label": "Etwas anderes…",
+          "next": "pain_other",
+          "send": "Etwas anderes…",
+          "patch": {
+            "pain_points": [
+              "other"
+            ]
+          }
+        }
+      ]
+    },
+    "pain_pro": {
+      "reply": "Als Profi hast du den besten Blick darauf. Was würde dir beim Kundenfeedback am meisten helfen?",
+      "nextAction": "ask_pain",
+      "quickReplies": [
+        {
+          "label": "Ehrliches, verifiziertes Feedback 🌟",
+          "next": "pitch_fake_reviews",
+          "patch": {
+            "pain_points": [
+              "fake_reviews"
+            ]
+          }
+        },
+        {
+          "label": "Weniger Aufwand bei Buchungen ⚓",
+          "next": "pitch_handover",
+          "patch": {
+            "pain_points": [
+              "handover_chaos"
+            ]
+          }
+        },
+        {
+          "label": "Etwas anderes…",
+          "next": "pain_other",
+          "send": "Etwas anderes…",
+          "patch": {
+            "pain_points": [
+              "other"
+            ]
+          }
+        }
+      ]
+    },
+    "pain_other": {
+      "reply": "Erzähl mir gern, worum es konkret geht.",
+      "nextAction": "ask_pain"
+    },
+    "pitch_hidden_costs": {
+      "reply": "Versteckte Kosten wie Endreinigung, Kaution oder Sprit, die erst am Ende auftauchen, sind ein häufiges Ärgernis. Wir haben jedes Boot in der Datenbank und zeigen dir vorab den echten Gesamtpreis – alle Nebenkosten inklusive, nichts versteckt. Hinterlasse mir gern deine Email, dann sichern wir dir den Early Access.",
+      "nextAction": "request_email",
+      "mode": "email",
+      "patch": {
+        "next_action": "request_email",
+        "intent_strength": 3
+      },
+      "quickReplies": [
+        {
+          "label": "Nein, danke 🙏",
+          "next": "email_decline"
+        }
+      ]
+    },
+    "pitch_boat_mismatch": {
+      "reply": "Wenn das Boot von den Fotos abweicht, ist der Ärger groß. Wir haben jedes Boot mit echten Fotos und geprüfter Ausstattung in der Datenbank – plus Bewertungen von verifizierten Skippern, die tatsächlich an Bord waren. Du weißt vorher genau, was dich erwartet. Hinterlasse mir gern deine Email, dann sichern wir dir den Early Access.",
+      "nextAction": "request_email",
+      "mode": "email",
+      "patch": {
+        "next_action": "request_email",
+        "intent_strength": 3
+      },
+      "quickReplies": [
+        {
+          "label": "Nein, danke 🙏",
+          "next": "email_decline"
+        }
+      ]
+    },
+    "pitch_handover": {
+      "reply": "Eine reibungslose Übergabe macht einen großen Unterschied. Zu jedem Boot in unserer Datenbank findest du echte Bewertungen verifizierter Skipper – du siehst vorab, bei welchen Anbietern die Übergabe zuverlässig läuft. Hinterlasse mir gern deine Email, dann sichern wir dir den Early Access.",
+      "nextAction": "request_email",
+      "mode": "email",
+      "patch": {
+        "next_action": "request_email",
+        "intent_strength": 3
+      },
+      "quickReplies": [
+        {
+          "label": "Nein, danke 🙏",
+          "next": "email_decline"
+        }
+      ]
+    },
+    "pitch_unresponsive": {
+      "reply": "Eine schlechte Erreichbarkeit des Vercharterers ist ein klares Warnsignal. In unserer Datenbank steht zu jedem Anbieter, wie zuverlässig er reagiert – bewertet von Skippern, die dort tatsächlich gechartert haben. Hinterlasse mir gern deine Email, dann sichern wir dir den Early Access.",
+      "nextAction": "request_email",
+      "mode": "email",
+      "patch": {
+        "next_action": "request_email",
+        "intent_strength": 3
+      },
+      "quickReplies": [
+        {
+          "label": "Nein, danke 🙏",
+          "next": "email_decline"
+        }
+      ]
+    },
+    "pitch_fake_reviews": {
+      "reply": "Das ist unser Kernthema: jedes Boot in einer vollständigen Datenbank – mit echten Fotos, echter Ausstattung, echtem Preis und Bewertungen ausschließlich von verifizierten Skippern. Keine gekauften Sterne. Hinterlasse mir gern deine Email, dann bist du beim Early Access dabei.",
+      "nextAction": "request_email",
+      "mode": "email",
+      "patch": {
+        "next_action": "request_email",
+        "intent_strength": 4
+      },
+      "quickReplies": [
+        {
+          "label": "Nein, danke 🙏",
+          "next": "email_decline"
+        }
+      ]
+    },
+    "pitch_price": {
+      "reply": "Zu jedem Boot in unserer Datenbank siehst du den echten Preis inklusive aller Nebenkosten – und Bewertungen verifizierter Skipper, ob sich der Törn gelohnt hat. Kein Kleingedrucktes, keine Überraschungen. Hinterlasse mir gern deine Email, dann sichern wir dir den Early Access.",
+      "nextAction": "request_email",
+      "mode": "email",
+      "patch": {
+        "next_action": "request_email",
+        "intent_strength": 3
+      },
+      "quickReplies": [
+        {
+          "label": "Nein, danke 🙏",
+          "next": "email_decline"
+        }
+      ]
+    },
+    "pitch_crew_license": {
+      "reply": "Verständlich. In unserer Datenbank findest du zu jedem Boot echte Fotos, die genaue Ausstattung und Bewertungen verifizierter Skipper – so siehst du sofort, wo Einsteiger und Crew-Suchende gut aufgehoben sind. Hinterlasse mir gern deine Email, dann sichern wir dir den Early Access.",
+      "nextAction": "request_email",
+      "mode": "email",
+      "patch": {
+        "next_action": "request_email",
+        "intent_strength": 2
+      },
+      "quickReplies": [
+        {
+          "label": "Nein, danke 🙏",
+          "next": "email_decline"
+        }
+      ]
+    },
+    "wrap_up_email": {
+      "reply": "Vielen Dank – dein Early Access ist gesichert ⚓ Wer drei weitere Segler einlädt, erhält Lifetime-Pro. Wir melden uns, sobald es losgeht.",
+      "nextAction": "wrap_up",
+      "terminal": true,
+      "leadReady": true,
+      "patch": {
+        "next_action": "wrap_up",
+        "intent_strength": 4
+      }
+    },
+    "email_decline": {
+      "reply": "Kein Problem, ich dränge dich nicht. Wir würden dich nur einmal benachrichtigen, sobald der Early Access startet – kein Newsletter, kein Spam. Wenn du magst, beantworte ich dir vorher noch offene Fragen, oder du hinterlässt deine Email doch noch.",
+      "nextAction": "request_email",
+      "mode": "email",
+      "patch": {
+        "next_action": "request_email"
+      },
+      "quickReplies": [
+        {
+          "label": "Nein, das war's 🙏",
+          "next": "goodbye_final"
+        }
+      ]
+    },
+    "goodbye_final": {
+      "reply": "Alles klar. Vielen Dank für deine Zeit und allzeit gute Fahrt ⛵",
+      "nextAction": "goodbye",
+      "terminal": true,
+      "patch": {
+        "next_action": "goodbye"
+      }
+    }
+  }
+}

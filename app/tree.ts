@@ -1,13 +1,20 @@
 // Deterministischer Antworten-Tree für den Einstieg.
 //
+// Die INHALTE (Fragen, Buttons, Pitches, Abschlüsse) liegen in ./tree.json und
+// werden dort bearbeitet und re-importiert — siehe TREE.md für das Format.
+// Diese Datei lädt die JSON, validiert sie beim Start und stellt sie typisiert
+// als TREE bereit.
+//
 // Solange der User auf Buttons klickt, läuft die komplette Qualifizierung
 // (Status → Pain → Pitch → Email) clientseitig ab — KEIN Anthropic-Call, also
 // 0 Token. Erst wenn jemand frei tippt statt klickt, übernimmt Claude
-// (siehe page.tsx → mode "claude"). Die Email wird ebenfalls hier validiert.
+// (siehe page.tsx → mode "claude").
 //
 // Die Typen spiegeln das RESPONSE_SCHEMA aus app/api/chat/route.ts, damit der
 // Übergang an Claude nahtlos ist: jeder Tree-Schritt schreibt denselben State,
 // den Claude im letzten Assistant-Turn als JSON wiederfindet.
+
+import treeData from "./tree.json";
 
 export type LeadStatus =
   | "sailing_now"
@@ -72,8 +79,6 @@ export type TreeNode = {
   patch?: Partial<LeadState>; // State-Änderung beim Betreten des Nodes
 };
 
-export const ROOT_ID = "opening";
-
 export const INITIAL_STATE: LeadState = {
   status: "unknown",
   pain_points: [],
@@ -83,200 +88,61 @@ export const INITIAL_STATE: LeadState = {
   next_action: "ask_status",
 };
 
-// Gemeinsame "Was anderes…"-Option: führt in einen Freitext-Schritt, den dann
-// Claude übernimmt.
-const PAIN_OTHER: QuickReply = {
-  label: "Etwas anderes…",
-  send: "Etwas anderes…",
-  next: "pain_other",
-  patch: { pain_points: ["other"] },
+// ─── tree.json laden, validieren, typisieren ───────────────────────────────
+
+// In der JSON ist der Objekt-Key die Node-ID (das `id`-Feld wird hier ergänzt).
+type RawTree = {
+  root: string;
+  emailSuccessNode: string;
+  nodes: Record<string, Omit<TreeNode, "id">>;
 };
 
-export const TREE: Record<string, TreeNode> = {
-  // ── Einstieg: Status ─────────────────────────────────────────────────────
-  opening: {
-    id: "opening",
-    reply:
-      "Willkommen bei PicYourBoat. Damit ich dich richtig einordnen kann: Bist du gerade selbst auf dem Wasser, in der Planung oder noch am Überlegen?",
-    nextAction: "ask_status",
-    quickReplies: [
-      { label: "Auf dem Wasser 🌊", next: "pain_sailing", patch: { status: "sailing_now" } },
-      { label: "In der Planung 🗺️", next: "pain_planning", patch: { status: "planning" } },
-      { label: "Noch am Überlegen 💭", next: "pain_dreaming", patch: { status: "dreaming" } },
-      { label: "Ich verchartere selbst ⛵", next: "pain_charterer", patch: { status: "charterer" } },
-      { label: "Profi (Schule/Skipper) 🧭", next: "pain_pro", patch: { status: "pro" } },
-    ],
-  },
+// JSON kommt mit weiten string-Typen; der Cast bridged zu den Unions. Korrekt-
+// heit der Werte stellt validateTree() + der manuelle Pflegeprozess sicher.
+const data = treeData as unknown as RawTree;
 
-  // ── Pain je nach Status ──────────────────────────────────────────────────
-  pain_sailing: {
-    id: "pain_sailing",
-    reply: "Dann kennst du den Ablauf. Was war bei diesem Boot bisher das größte Ärgernis?",
-    nextAction: "ask_pain",
-    quickReplies: [
-      { label: "Versteckte Kosten 💸", next: "pitch_hidden_costs", patch: { pain_points: ["hidden_costs"] } },
-      { label: "Boot wich von den Fotos ab 📸", next: "pitch_boat_mismatch", patch: { pain_points: ["boat_mismatch"] } },
-      { label: "Probleme bei der Übergabe ⚓", next: "pitch_handover", patch: { pain_points: ["handover_chaos"] } },
-      { label: "Vercharterer schlecht erreichbar 📵", next: "pitch_unresponsive", patch: { pain_points: ["vendor_unresponsive"] } },
-      PAIN_OTHER,
-    ],
-  },
+// Verweise prüfen, damit ein Tippfehler in tree.json sofort beim Start auffällt
+// (statt erst als stummer Sprung-ins-Leere zur Laufzeit).
+function validateTree(t: RawTree): void {
+  const ids = new Set(Object.keys(t.nodes));
+  const problems: string[] = [];
 
-  pain_planning: {
-    id: "pain_planning",
-    reply: "Eine gute Phase für verlässliche Informationen. Was ist bei der Suche aktuell das größte Problem?",
-    nextAction: "ask_pain",
-    quickReplies: [
-      { label: "Ich traue den Bewertungen nicht 🌟", next: "pitch_fake_reviews", patch: { pain_points: ["fake_reviews"] } },
-      { label: "Preise sind intransparent 💸", next: "pitch_price", patch: { pain_points: ["price"] } },
-      { label: "Finde kein passendes Boot ⛵", next: "pitch_boat_mismatch", patch: { pain_points: ["boat_mismatch"] } },
-      PAIN_OTHER,
-    ],
-  },
+  if (!ids.has(t.root)) problems.push(`root "${t.root}" fehlt unter nodes`);
+  if (!ids.has(t.emailSuccessNode)) {
+    problems.push(`emailSuccessNode "${t.emailSuccessNode}" fehlt unter nodes`);
+  }
 
-  pain_dreaming: {
-    id: "pain_dreaming",
-    reply: "Verständlich. Was hält dich aktuell noch ab?",
-    nextAction: "ask_pain",
-    quickReplies: [
-      { label: "Der Preis 💸", next: "pitch_price", patch: { pain_points: ["price"] } },
-      { label: "Fehlende Crew 🧑‍🤝‍🧑", next: "pitch_crew_license", patch: { pain_points: ["no_crew"] } },
-      { label: "Kein Skipperschein 🪪", next: "pitch_crew_license", patch: { pain_points: ["no_license"] } },
-      PAIN_OTHER,
-    ],
-  },
+  for (const [id, node] of Object.entries(t.nodes)) {
+    if (!node.reply) problems.push(`Node "${id}": "reply" fehlt`);
+    if (!node.nextAction) problems.push(`Node "${id}": "nextAction" fehlt`);
+    for (const qr of node.quickReplies ?? []) {
+      if (!qr.label) problems.push(`Node "${id}": Button ohne "label"`);
+      if (!ids.has(qr.next)) {
+        problems.push(
+          `Node "${id}": Button "${qr.label}" verweist auf unbekannten Node "${qr.next}"`,
+        );
+      }
+    }
+  }
 
-  pain_charterer: {
-    id: "pain_charterer",
-    reply: "Die Anbieter-Perspektive interessiert uns besonders. Was stört dich an den heutigen Bewertungsplattformen?",
-    nextAction: "ask_pain",
-    quickReplies: [
-      { label: "Fake-Bewertungen 🌟", next: "pitch_fake_reviews", patch: { pain_points: ["fake_reviews"] } },
-      { label: "Zu hohe Plattform-Gebühren 💸", next: "pitch_price", patch: { pain_points: ["price"] } },
-      { label: "Gäste geben kaum Feedback 📵", next: "pitch_unresponsive", patch: { pain_points: ["vendor_unresponsive"] } },
-      PAIN_OTHER,
-    ],
-  },
+  if (problems.length) {
+    throw new Error(`tree.json ist ungültig:\n- ${problems.join("\n- ")}`);
+  }
+}
 
-  pain_pro: {
-    id: "pain_pro",
-    reply: "Als Profi hast du den besten Blick darauf. Was würde dir beim Kundenfeedback am meisten helfen?",
-    nextAction: "ask_pain",
-    quickReplies: [
-      { label: "Ehrliches, verifiziertes Feedback 🌟", next: "pitch_fake_reviews", patch: { pain_points: ["fake_reviews"] } },
-      { label: "Weniger Aufwand bei Buchungen ⚓", next: "pitch_handover", patch: { pain_points: ["handover_chaos"] } },
-      PAIN_OTHER,
-    ],
-  },
+validateTree(data);
 
-  // Freitext-Übergabe an Claude (kein Button → page.tsx schaltet auf Claude um,
-  // sobald der User hier tippt).
-  pain_other: {
-    id: "pain_other",
-    reply: "Erzähl mir gern, worum es konkret geht.",
-    nextAction: "ask_pain",
-  },
+export const ROOT_ID = data.root;
 
-  // ── Pitch + Email-Abfrage (mode "email" → clientseitige Validierung) ──────
-  // Jeder Pitch-Node hängt die Email-CTA direkt an, spart einen Klick.
-  pitch_hidden_costs: {
-    id: "pitch_hidden_costs",
-    reply:
-      "Versteckte Kosten wie Endreinigung, Kaution oder Sprit, die erst am Ende auftauchen, sind ein häufiges Ärgernis. Wir haben jedes Boot in der Datenbank und zeigen dir vorab den echten Gesamtpreis – alle Nebenkosten inklusive, nichts versteckt. Hinterlasse mir gern deine Email, dann sichern wir dir den Early Access.",
-    nextAction: "request_email",
-    mode: "email",
-    patch: { next_action: "request_email", intent_strength: 3 },
-    quickReplies: [{ label: "Nein, danke 🙏", next: "email_decline" }],
-  },
-  pitch_boat_mismatch: {
-    id: "pitch_boat_mismatch",
-    reply:
-      "Wenn das Boot von den Fotos abweicht, ist der Ärger groß. Wir haben jedes Boot mit echten Fotos und geprüfter Ausstattung in der Datenbank – plus Bewertungen von verifizierten Skippern, die tatsächlich an Bord waren. Du weißt vorher genau, was dich erwartet. Hinterlasse mir gern deine Email, dann sichern wir dir den Early Access.",
-    nextAction: "request_email",
-    mode: "email",
-    patch: { next_action: "request_email", intent_strength: 3 },
-    quickReplies: [{ label: "Nein, danke 🙏", next: "email_decline" }],
-  },
-  pitch_handover: {
-    id: "pitch_handover",
-    reply:
-      "Eine reibungslose Übergabe macht einen großen Unterschied. Zu jedem Boot in unserer Datenbank findest du echte Bewertungen verifizierter Skipper – du siehst vorab, bei welchen Anbietern die Übergabe zuverlässig läuft. Hinterlasse mir gern deine Email, dann sichern wir dir den Early Access.",
-    nextAction: "request_email",
-    mode: "email",
-    patch: { next_action: "request_email", intent_strength: 3 },
-    quickReplies: [{ label: "Nein, danke 🙏", next: "email_decline" }],
-  },
-  pitch_unresponsive: {
-    id: "pitch_unresponsive",
-    reply:
-      "Eine schlechte Erreichbarkeit des Vercharterers ist ein klares Warnsignal. In unserer Datenbank steht zu jedem Anbieter, wie zuverlässig er reagiert – bewertet von Skippern, die dort tatsächlich gechartert haben. Hinterlasse mir gern deine Email, dann sichern wir dir den Early Access.",
-    nextAction: "request_email",
-    mode: "email",
-    patch: { next_action: "request_email", intent_strength: 3 },
-    quickReplies: [{ label: "Nein, danke 🙏", next: "email_decline" }],
-  },
-  pitch_fake_reviews: {
-    id: "pitch_fake_reviews",
-    reply:
-      "Das ist unser Kernthema: jedes Boot in einer vollständigen Datenbank – mit echten Fotos, echter Ausstattung, echtem Preis und Bewertungen ausschließlich von verifizierten Skippern. Keine gekauften Sterne. Hinterlasse mir gern deine Email, dann bist du beim Early Access dabei.",
-    nextAction: "request_email",
-    mode: "email",
-    patch: { next_action: "request_email", intent_strength: 4 },
-    quickReplies: [{ label: "Nein, danke 🙏", next: "email_decline" }],
-  },
-  pitch_price: {
-    id: "pitch_price",
-    reply:
-      "Zu jedem Boot in unserer Datenbank siehst du den echten Preis inklusive aller Nebenkosten – und Bewertungen verifizierter Skipper, ob sich der Törn gelohnt hat. Kein Kleingedrucktes, keine Überraschungen. Hinterlasse mir gern deine Email, dann sichern wir dir den Early Access.",
-    nextAction: "request_email",
-    mode: "email",
-    patch: { next_action: "request_email", intent_strength: 3 },
-    quickReplies: [{ label: "Nein, danke 🙏", next: "email_decline" }],
-  },
-  pitch_crew_license: {
-    id: "pitch_crew_license",
-    reply:
-      "Verständlich. In unserer Datenbank findest du zu jedem Boot echte Fotos, die genaue Ausstattung und Bewertungen verifizierter Skipper – so siehst du sofort, wo Einsteiger und Crew-Suchende gut aufgehoben sind. Hinterlasse mir gern deine Email, dann sichern wir dir den Early Access.",
-    nextAction: "request_email",
-    mode: "email",
-    patch: { next_action: "request_email", intent_strength: 2 },
-    quickReplies: [{ label: "Nein, danke 🙏", next: "email_decline" }],
-  },
+// Ziel-Node nach erfolgreicher Email-Eingabe (in tree.json konfiguriert).
+export const EMAIL_SUCCESS_ID = data.emailSuccessNode;
 
-  // ── Abschluss ────────────────────────────────────────────────────────────
-  wrap_up_email: {
-    id: "wrap_up_email",
-    reply:
-      "Vielen Dank – dein Early Access ist gesichert ⚓ Wer drei weitere Segler einlädt, erhält Lifetime-Pro. Wir melden uns, sobald es losgeht.",
-    nextAction: "wrap_up",
-    terminal: true,
-    leadReady: true,
-    patch: { next_action: "wrap_up", intent_strength: 4 },
-  },
-  // Einwandbehandlung: kein Sackgassen-Ende. Wert einmal sachlich einordnen,
-  // Tür offen lassen (Eingabe bleibt aktiv) — der User kann weiter fragen, doch
-  // noch eine Email dalassen oder das Gespräch bewusst beenden.
-  email_decline: {
-    id: "email_decline",
-    reply:
-      "Kein Problem, ich dränge dich nicht. Wir würden dich nur einmal benachrichtigen, sobald der Early Access startet – kein Newsletter, kein Spam. Wenn du magst, beantworte ich dir vorher noch offene Fragen, oder du hinterlässt deine Email doch noch.",
-    nextAction: "request_email",
-    mode: "email",
-    patch: { next_action: "request_email" },
-    quickReplies: [{ label: "Nein, das war's 🙏", next: "goodbye_final" }],
-  },
-
-  goodbye_final: {
-    id: "goodbye_final",
-    reply: "Alles klar. Vielen Dank für deine Zeit und allzeit gute Fahrt ⛵",
-    nextAction: "goodbye",
-    terminal: true,
-    patch: { next_action: "goodbye" },
-  },
-};
-
-// Ziel-Node nach erfolgreicher Email-Eingabe (konstant, daher hier zentral).
-export const EMAIL_SUCCESS_ID = "wrap_up_email";
+// Node-Map mit ergänzter id (= JSON-Key).
+export const TREE: Record<string, TreeNode> = Object.fromEntries(
+  Object.entries(data.nodes).map(
+    ([id, node]) => [id, { id, ...node }] as [string, TreeNode],
+  ),
+);
 
 // Zieht eine Email-Adresse aus freiem Text — egal ob nackt ("max@foo.de") oder
 // eingebettet ("klar, schreib mir an max@foo.de!"). Bewusst lockere Regel
