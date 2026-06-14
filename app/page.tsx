@@ -232,6 +232,19 @@ export default function Home() {
     }
   }
 
+  // Beim Fokus ins Textfeld: Scroll-Snap aus (sonst kann iOS das Feld nicht über
+  // die Tastatur schieben) und das Feld aktiv in den sichtbaren Bereich scrollen.
+  function onInputFocus() {
+    document.documentElement.style.scrollSnapType = "none";
+    window.setTimeout(
+      () => inputRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }),
+      300,
+    );
+  }
+  function onInputBlur() {
+    document.documentElement.style.scrollSnapType = "";
+  }
+
   // ── Gesprächs-Feed (vertikales Scroll-Snap, Intro = Sektion 0) ─────────────
   return (
     <div className="relative mx-auto w-full max-w-md bg-hull-deep text-white">
@@ -254,6 +267,8 @@ export default function Home() {
           send={send}
           restart={restart}
           inputRef={inputRef}
+          onInputFocus={onInputFocus}
+          onInputBlur={onInputBlur}
           u={u}
         />
       ))}
@@ -322,6 +337,8 @@ function FrameSection({
   send,
   restart,
   inputRef,
+  onInputFocus,
+  onInputBlur,
   u,
 }: {
   frame: Frame;
@@ -338,6 +355,8 @@ function FrameSection({
   send: () => void;
   restart: () => void;
   inputRef: React.RefObject<HTMLInputElement | null>;
+  onInputFocus: () => void;
+  onInputBlur: () => void;
   u: ReturnType<typeof ui>;
 }) {
   // ── Intro-/Hero-Sektion (Sektion 0) ───────────────────────────────────────
@@ -456,6 +475,8 @@ function FrameSection({
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={onKeyDown}
+                  onFocus={onInputFocus}
+                  onBlur={onInputBlur}
                   disabled={loading}
                   type="text"
                   inputMode="email"
@@ -482,6 +503,8 @@ function FrameSection({
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={onKeyDown}
+                  onFocus={onInputFocus}
+                  onBlur={onInputBlur}
                   disabled={loading}
                   type="text"
                   inputMode="text"
