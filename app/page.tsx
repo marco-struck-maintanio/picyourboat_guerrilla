@@ -71,7 +71,7 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const activeSectionRef = useRef<HTMLElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const touchStartY = useRef<number | null>(null);
   const nextKey = useRef(1);
@@ -83,10 +83,7 @@ export default function Home() {
   useEffect(() => {
     if (!started) return;
     requestAnimationFrame(() =>
-      scrollRef.current?.scrollTo({
-        top: scrollRef.current.scrollHeight,
-        behavior: "smooth",
-      }),
+      activeSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
     );
   }, [frames.length, started]);
 
@@ -210,7 +207,7 @@ export default function Home() {
     setHistory([{ role: "assistant", content: JSON.stringify(openingResponse(locale)) }]);
     setError(null);
     setInput("");
-    requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
+    requestAnimationFrame(() => window.scrollTo({ top: 0 }));
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -290,34 +287,32 @@ export default function Home() {
 
   // ── Gesprächs-Feed (vertikales Scroll-Snap) ────────────────────────────────
   return (
-    <div className="relative mx-auto h-[100dvh] w-full max-w-md overflow-hidden bg-hull-deep text-white">
-      <div
-        ref={scrollRef}
-        className="h-full snap-y snap-mandatory overflow-y-scroll scroll-smooth"
-      >
-        {frames.map((f, i) => (
-          <FrameSection
-            key={f.key}
-            frame={f}
-            active={i === activeIndex}
-            locale={locale}
-            loading={loading && i === activeIndex}
-            error={i === activeIndex ? error : null}
-            busy={busy}
-            input={input}
-            setInput={setInput}
-            onPill={onPill}
-            onKeyDown={onKeyDown}
-            send={send}
-            restart={restart}
-            inputRef={inputRef}
-            u={u}
-          />
-        ))}
-      </div>
+    <div className="relative mx-auto w-full max-w-md bg-hull-deep text-white">
+      {/* Sektionen liegen im normalen Dokumentfluss → das Dokument scrollt
+          (nötig, damit Mobile Safari seine Leisten einklappt). */}
+      {frames.map((f, i) => (
+        <FrameSection
+          key={f.key}
+          frame={f}
+          active={i === activeIndex}
+          sectionRef={i === activeIndex ? activeSectionRef : undefined}
+          locale={locale}
+          loading={loading && i === activeIndex}
+          error={i === activeIndex ? error : null}
+          busy={busy}
+          input={input}
+          setInput={setInput}
+          onPill={onPill}
+          onKeyDown={onKeyDown}
+          send={send}
+          restart={restart}
+          inputRef={inputRef}
+          u={u}
+        />
+      ))}
 
-      {/* Fixes Kopf-Overlay: Logo + Sprache + Fortschritt */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 px-5 pt-[max(1rem,env(safe-area-inset-top))]">
+      {/* Fixes Kopf-Overlay (viewport-fix, auf Spaltenbreite zentriert) */}
+      <div className="pointer-events-none fixed inset-x-0 top-0 z-20 mx-auto w-full max-w-md px-5 pt-[max(1rem,env(safe-area-inset-top))]">
         <div className="flex items-center">
           <img
             src="/pyb-logo-h.png"
@@ -356,6 +351,7 @@ export default function Home() {
 function FrameSection({
   frame,
   active,
+  sectionRef,
   locale,
   loading,
   error,
@@ -371,6 +367,7 @@ function FrameSection({
 }: {
   frame: Frame;
   active: boolean;
+  sectionRef?: React.Ref<HTMLElement>;
   locale: Locale;
   loading: boolean;
   error: string | null;
@@ -392,7 +389,10 @@ function FrameSection({
   const bigText = reply.length <= 120;
 
   return (
-    <section className="relative h-[100dvh] w-full shrink-0 snap-start overflow-hidden">
+    <section
+      ref={sectionRef}
+      className="relative h-[100dvh] w-full snap-start overflow-hidden"
+    >
       <img src={`/scenes/${frame.scene}.jpg`} alt="" className="absolute inset-0 h-full w-full object-cover" />
       <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/25 to-black/80" />
 
