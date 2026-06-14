@@ -442,66 +442,39 @@ function FrameSection({
               </div>
             )}
 
-            {isEmail && !terminal ? (
-              <div className="flex flex-col gap-2">
-                <div className="px-1 text-[11px] font-semibold text-rope drop-shadow">
-                  ✦ {u.emailHint}
-                </div>
-                <input
-                  ref={inputRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={onKeyDown}
-                  onFocus={onInputFocus}
-                  onBlur={onInputBlur}
-                  disabled={loading}
-                  type="text"
-                  inputMode="email"
-                  autoComplete="email"
-                  placeholder={u.placeholderEmail}
-                  className="w-full rounded-2xl bg-white/85 px-4 py-3 text-[15px] text-hull-deep placeholder:text-hull-deep/40 outline-none ring-1 ring-white/40 backdrop-blur transition focus:ring-rope disabled:opacity-60"
-                />
-                <button
-                  onClick={send}
-                  disabled={loading || !input.trim()}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-rope py-3.5 text-[15px] font-semibold text-hull-deep transition hover:bg-rope-dark active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {u.joinCta}
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M5 12h14" />
-                    <path d="m13 6 6 6-6 6" />
-                  </svg>
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-end gap-2">
-                <input
-                  ref={inputRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={onKeyDown}
-                  onFocus={onInputFocus}
-                  onBlur={onInputBlur}
-                  disabled={loading}
-                  type="text"
-                  inputMode="text"
-                  autoComplete="off"
-                  placeholder={pills ? u.tapHint : u.placeholder}
-                  className="min-w-0 flex-1 rounded-2xl bg-white/85 px-4 py-3 text-[15px] text-hull-deep placeholder:text-hull-deep/40 outline-none ring-1 ring-white/40 backdrop-blur transition focus:ring-rope disabled:opacity-60"
-                />
-                <button
-                  onClick={send}
-                  disabled={loading || !input.trim()}
-                  aria-label={u.send}
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rope text-hull-deep transition hover:bg-rope-dark active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M22 2 11 13" />
-                    <path d="M22 2 15 22l-4-9-9-4 20-7Z" />
-                  </svg>
-                </button>
+            {isEmail && !terminal && (
+              <div className="mb-2 px-1 text-[11px] font-semibold text-rope drop-shadow">
+                ✦ {u.emailHint}
               </div>
             )}
+
+            <div className="flex items-end gap-2">
+              <input
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={onKeyDown}
+                onFocus={onInputFocus}
+                onBlur={onInputBlur}
+                disabled={loading}
+                type="text"
+                inputMode={isEmail ? "email" : "text"}
+                autoComplete={isEmail ? "email" : "off"}
+                placeholder={isEmail ? u.placeholderEmail : pills ? u.tapHint : u.placeholder}
+                className="min-w-0 flex-1 rounded-2xl bg-white/85 px-4 py-3 text-[15px] text-hull-deep placeholder:text-hull-deep/40 outline-none ring-1 ring-white/40 backdrop-blur transition focus:ring-rope disabled:opacity-60"
+              />
+              <button
+                onClick={send}
+                disabled={loading || !input.trim()}
+                aria-label={u.send}
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rope text-hull-deep transition hover:bg-rope-dark active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 2 11 13" />
+                  <path d="M22 2 15 22l-4-9-9-4 20-7Z" />
+                </svg>
+              </button>
+            </div>
 
             {terminal && (
               <button

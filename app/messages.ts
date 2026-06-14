@@ -7,7 +7,6 @@ type UIStrings = {
   placeholder: string;
   placeholderEmail: string;
   send: string;
-  joinCta: string;
   restart: string;
   tapHint: string;
   emailHint: string;
@@ -20,7 +19,6 @@ const MESSAGES: Record<Locale, UIStrings> = {
     placeholder: "Nachricht eingeben…",
     placeholderEmail: "Deine Email oder eine Frage",
     send: "Senden",
-    joinCta: "Early Access sichern",
     restart: "Neu starten",
     tapHint: "Wähle eine Antwort oder schreib frei",
     emailHint: "Email für den Early Access – oder stell mir eine Frage",
@@ -31,7 +29,6 @@ const MESSAGES: Record<Locale, UIStrings> = {
     placeholder: "Type a message…",
     placeholderEmail: "Your email or a question",
     send: "Send",
-    joinCta: "Secure Early Access",
     restart: "Restart",
     tapHint: "Pick an answer or type freely",
     emailHint: "Email for Early Access – or ask me a question",
