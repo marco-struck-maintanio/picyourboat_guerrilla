@@ -172,7 +172,7 @@ export async function POST(req: Request) {
     );
   }
 
-  let body: { messages?: ChatMessage[] };
+  let body: { messages?: ChatMessage[]; locale?: string };
   try {
     body = await req.json();
   } catch {
@@ -184,6 +184,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Keine Nachrichten übergeben." }, { status: 400 });
   }
 
+  // Antwortsprache: unabhängig von der Sprache des bisherigen Verlaufs.
+  const locale = body.locale === "en" ? "en" : "de";
+  const system =
+    SYSTEM_PROMPT +
+    `\n\n# Sprache\nAntworte ausschließlich auf ${
+      locale === "en" ? "Englisch" : "Deutsch"
+    }, unabhängig von der Sprache des bisherigen Verlaufs.`;
+
   const client = new Anthropic({ apiKey });
 
   try {
@@ -191,7 +199,7 @@ export async function POST(req: Request) {
       betas: ["structured-outputs-2025-11-13"],
       model: "claude-opus-4-8",
       max_tokens: 1024,
-      system: SYSTEM_PROMPT,
+      system,
       // Structured Outputs erzwingt valides JSON nach RESPONSE_SCHEMA.
       output_format: { type: "json_schema", schema: RESPONSE_SCHEMA },
       output_config: { effort: "low" },

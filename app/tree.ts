@@ -1,20 +1,24 @@
 // Deterministischer Antworten-Tree für den Einstieg.
 //
-// Die INHALTE (Fragen, Buttons, Pitches, Abschlüsse) liegen in ./tree.json und
-// werden dort bearbeitet und re-importiert — siehe TREE.md für das Format.
-// Diese Datei lädt die JSON, validiert sie beim Start und stellt sie typisiert
-// als TREE bereit.
+// Die INHALTE (Fragen, Buttons, Pitches) liegen zweisprachig in ./tree.json:
+// jedes Textfeld ist ein { de, en }-Objekt. Diese Datei lädt die JSON,
+// validiert sie beim Start und stellt sie typisiert als TREE bereit.
 //
-// Solange der User auf Buttons klickt, läuft die komplette Qualifizierung
-// (Status → Pain → Pitch → Email) clientseitig ab — KEIN Anthropic-Call, also
-// 0 Token. Erst wenn jemand frei tippt statt klickt, übernimmt Claude
-// (siehe page.tsx → mode "claude").
+// Solange der User auf Buttons tippt, läuft die Qualifizierung clientseitig ab
+// (KEIN Anthropic-Call). Erst bei Freitext übernimmt Claude (page.tsx).
 //
-// Die Typen spiegeln das RESPONSE_SCHEMA aus app/api/chat/route.ts, damit der
-// Übergang an Claude nahtlos ist: jeder Tree-Schritt schreibt denselben State,
-// den Claude im letzten Assistant-Turn als JSON wiederfindet.
+// Die State-Typen spiegeln das RESPONSE_SCHEMA aus app/api/chat/route.ts.
 
 import treeData from "./tree.json";
+
+export type Locale = "de" | "en";
+
+// Ein zweisprachiges Textfeld.
+export type LocalizedText = { de: string; en: string };
+
+export function t(text: LocalizedText, locale: Locale): string {
+  return text[locale] ?? text.de;
+}
 
 export type LeadStatus =
   | "sailing_now"
@@ -53,6 +57,8 @@ export type LeadState = {
   next_action: NextAction;
 };
 
+// Antwort-Objekt, das ins API-Verlaufs-JSON geschrieben wird (reply schon in der
+// gewählten Sprache aufgelöst).
 export type CrewResponse = {
   reply: string;
   state: LeadState;
@@ -62,19 +68,20 @@ export type CrewResponse = {
 // Ein Button. `send` ist der Text, der als User-Bubble erscheint (Default:
 // label). `patch` schreibt in den State. `next` zeigt auf den Folge-Node.
 export type QuickReply = {
-  label: string;
-  send?: string;
+  label: LocalizedText;
+  send?: LocalizedText;
   next: string;
   patch?: Partial<LeadState>;
 };
 
 export type TreeNode = {
   id: string;
-  reply: string; // sichtbare Crew-Nachricht
+  reply: LocalizedText; // sichtbare Crew-Nachricht (zweisprachig)
   nextAction: NextAction; // wird beim Betreten in state.next_action geschrieben
+  scene?: string; // Datei in /public/scenes (ohne .jpg); Hintergrundbild
   quickReplies?: QuickReply[]; // Buttons; fehlt = reiner Freitext-Schritt
-  mode?: "email"; // erwartet eine Email (clientseitig validiert, kein Claude)
-  terminal?: boolean; // Gespräch endet hier
+  mode?: "email"; // erwartet eine Email (clientseitig erkannt, kein Claude)
+  terminal?: boolean; // abschließende Nachricht (Chat bleibt trotzdem offen)
   leadReady?: boolean; // setzt lead_ready_for_crm
   patch?: Partial<LeadState>; // State-Änderung beim Betreten des Nodes
 };
@@ -90,36 +97,35 @@ export const INITIAL_STATE: LeadState = {
 
 // ─── tree.json laden, validieren, typisieren ───────────────────────────────
 
-// In der JSON ist der Objekt-Key die Node-ID (das `id`-Feld wird hier ergänzt).
 type RawTree = {
   root: string;
   emailSuccessNode: string;
   nodes: Record<string, Omit<TreeNode, "id">>;
 };
 
-// JSON kommt mit weiten string-Typen; der Cast bridged zu den Unions. Korrekt-
-// heit der Werte stellt validateTree() + der manuelle Pflegeprozess sicher.
 const data = treeData as unknown as RawTree;
 
-// Verweise prüfen, damit ein Tippfehler in tree.json sofort beim Start auffällt
-// (statt erst als stummer Sprung-ins-Leere zur Laufzeit).
-function validateTree(t: RawTree): void {
-  const ids = new Set(Object.keys(t.nodes));
+const hasBoth = (x: unknown): x is LocalizedText =>
+  !!x && typeof x === "object" && "de" in x && "en" in x;
+
+// Beim Start prüfen: Verweise gültig, Texte zweisprachig vorhanden.
+function validateTree(tr: RawTree): void {
+  const ids = new Set(Object.keys(tr.nodes));
   const problems: string[] = [];
 
-  if (!ids.has(t.root)) problems.push(`root "${t.root}" fehlt unter nodes`);
-  if (!ids.has(t.emailSuccessNode)) {
-    problems.push(`emailSuccessNode "${t.emailSuccessNode}" fehlt unter nodes`);
+  if (!ids.has(tr.root)) problems.push(`root "${tr.root}" fehlt unter nodes`);
+  if (!ids.has(tr.emailSuccessNode)) {
+    problems.push(`emailSuccessNode "${tr.emailSuccessNode}" fehlt unter nodes`);
   }
 
-  for (const [id, node] of Object.entries(t.nodes)) {
-    if (!node.reply) problems.push(`Node "${id}": "reply" fehlt`);
+  for (const [id, node] of Object.entries(tr.nodes)) {
+    if (!hasBoth(node.reply)) problems.push(`Node "${id}": reply braucht { de, en }`);
     if (!node.nextAction) problems.push(`Node "${id}": "nextAction" fehlt`);
     for (const qr of node.quickReplies ?? []) {
-      if (!qr.label) problems.push(`Node "${id}": Button ohne "label"`);
+      if (!hasBoth(qr.label)) problems.push(`Node "${id}": Button-Label braucht { de, en }`);
       if (!ids.has(qr.next)) {
         problems.push(
-          `Node "${id}": Button "${qr.label}" verweist auf unbekannten Node "${qr.next}"`,
+          `Node "${id}": Button verweist auf unbekannten Node "${qr.next}"`,
         );
       }
     }
@@ -145,18 +151,19 @@ export const TREE: Record<string, TreeNode> = Object.fromEntries(
 );
 
 // Zieht eine Email-Adresse aus freiem Text — egal ob nackt ("max@foo.de") oder
-// eingebettet ("klar, schreib mir an max@foo.de!"). Bewusst lockere Regel
-// (@ + Punkt), wie im Prompt. Gibt null zurück, wenn keine drinsteckt — dann
-// behandelt das Frontend die Eingabe als Frage und gibt sie an Claude.
+// eingebettet ("schreib mir an max@foo.de!"). Gibt null zurück, wenn keine
+// drinsteckt — dann behandelt das Frontend die Eingabe als Frage (→ Claude).
 export function extractEmail(text: string): string | null {
   const m = text.match(/[^\s@]+@[^\s@]+\.[^\s@]+/);
   if (!m) return null;
-  // Übliche Satzzeichen am Ende abschneiden ("...@foo.de." / "...@foo.de,").
   return m[0].replace(/[.,;:!?")\]]+$/, "");
 }
 
-export const OPENING_RESPONSE: CrewResponse = {
-  reply: TREE[ROOT_ID].reply,
-  state: INITIAL_STATE,
-  lead_ready_for_crm: false,
-};
+// Baut die Eröffnungs-Antwort in der gewünschten Sprache (zum Seeden des Chats).
+export function openingResponse(locale: Locale): CrewResponse {
+  return {
+    reply: t(TREE[ROOT_ID].reply, locale),
+    state: INITIAL_STATE,
+    lead_ready_for_crm: false,
+  };
+}
