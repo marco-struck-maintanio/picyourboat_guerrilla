@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CrewResponse,
   EMAIL_SUCCESS_ID,
@@ -13,13 +13,22 @@ import {
   ROOT_ID,
   t,
   TREE,
-  TreeNode,
 } from "./tree";
 import { ui } from "./messages";
 
 // Claude-Verlauf: Assistant-Inhalte sind der rohe JSON-String, damit das Modell
 // seinen State mitführt. Tree-Schritte schreiben ins selbe Format.
 type ApiMessage = { role: "user" | "assistant"; content: string };
+
+// Ein gerenderter Vollbild-Abschnitt im Scroll-Feed.
+type Frame = {
+  key: number;
+  kind: "tree" | "claude";
+  nodeId?: string; // bei kind "tree"
+  reply?: string; // bei kind "claude" (bereits aufgelöster Text)
+  scene: string;
+  chosen?: string; // gewählte Antwort (für die Verlaufs-Darstellung)
+};
 
 const TOTAL_STEPS = 5;
 
@@ -41,15 +50,16 @@ function progressStep(na: LeadState["next_action"]): number {
   }
 }
 
+function openingFrame(): Frame {
+  return { key: 0, kind: "tree", nodeId: ROOT_ID, scene: TREE[ROOT_ID].scene ?? "deck" };
+}
+
 export default function Home() {
   const [locale, setLocale] = useState<Locale>("de");
   const u = ui(locale);
 
-  const [mode, setMode] = useState<"tree" | "claude">("tree");
-  const [nodeId, setNodeId] = useState<string>(ROOT_ID);
-  const [scene, setScene] = useState<string>(TREE[ROOT_ID].scene ?? "opener");
-  const [claudeReply, setClaudeReply] = useState<string | null>(null);
-
+  const [started, setStarted] = useState(false); // Intro-/Hero-Screen vorgeschaltet
+  const [frames, setFrames] = useState<Frame[]>([openingFrame()]);
   const [state, setState] = useState<LeadState>(INITIAL_STATE);
   const [leadReady, setLeadReady] = useState(false);
   const [history, setHistory] = useState<ApiMessage[]>(() => [
@@ -58,46 +68,37 @@ export default function Home() {
 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [busy, setBusy] = useState(false); // kurze Sperre während Frame-Wechsel
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [frameKey, setFrameKey] = useState(0);
-  const [started, setStarted] = useState(false); // Intro-/Hero-Screen vorgeschaltet
 
+  const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const touchStartY = useRef<number | null>(null);
-
-  const node: TreeNode | null = mode === "tree" ? TREE[nodeId] : null;
-  const reply = mode === "tree" && node ? t(node.reply, locale) : (claudeReply ?? "");
-  const pills =
-    mode === "tree" && node?.quickReplies && !loading ? node.quickReplies : null;
-
-  const wantsEmail =
-    (mode === "tree" && node?.mode === "email") ||
-    (mode === "claude" &&
-      (state.next_action === "request_email" ||
-        state.next_action === "confirm_email"));
-
-  const wrappedUp =
-    (mode === "tree" && !!node?.terminal) ||
-    (mode === "claude" && state.next_action === "goodbye");
+  const nextKey = useRef(1);
 
   const step = progressStep(state.next_action);
-  const bigText = reply.length <= 120;
+  const activeIndex = frames.length - 1;
 
-  // Sobald die Email erfasst ist (Lead bereit), immer die Sonnenuntergang-Szene
-  // des Abschluss-Nodes zeigen — egal über welchen Pfad (Buttons oder Claude).
-  const heroScene = leadReady ? (TREE[EMAIL_SUCCESS_ID].scene ?? scene) : scene;
+  // Nach jedem neuen Frame ans Ende scrollen (zum aktiven Schritt).
+  useEffect(() => {
+    if (!started) return;
+    requestAnimationFrame(() =>
+      scrollRef.current?.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: "smooth",
+      }),
+    );
+  }, [frames.length, started]);
 
-  function focusInputSoon() {
-    requestAnimationFrame(() => inputRef.current?.focus());
+  function begin() {
+    setStarted(true);
   }
 
-  // Tree-Übergang: State + Verlauf fortschreiben, Frame neu einblenden.
-  function goToNode(
-    target: TreeNode,
-    userText: string | null,
-    patch?: Partial<LeadState>,
-  ) {
+  // Tree-Übergang: State + Verlauf fortschreiben, Frame anhängen.
+  function appendTree(targetId: string, userText: string, patch?: Partial<LeadState>) {
+    const target = TREE[targetId];
+    if (!target) return;
+
     const nextState: LeadState = {
       ...state,
       ...patch,
@@ -113,36 +114,45 @@ export default function Home() {
 
     setHistory((h) => [
       ...h,
-      ...(userText ? [{ role: "user" as const, content: userText }] : []),
+      { role: "user", content: userText },
       { role: "assistant", content: JSON.stringify(crew) },
     ]);
     setState(nextState);
     setLeadReady(ready);
-    setNodeId(target.id);
-    if (target.scene) setScene(target.scene);
-    setMode("tree");
-    setClaudeReply(null);
     setError(null);
-    setFrameKey((k) => k + 1);
 
-    setBusy(true);
-    window.setTimeout(() => setBusy(false), 350);
+    // gewählte Antwort am bisher aktiven Frame vermerken + neuen Frame anhängen
+    setFrames((fs) => {
+      const marked = fs.map((f, i) =>
+        i === fs.length - 1 ? { ...f, chosen: userText } : f,
+      );
+      const sceneForReady = ready ? (TREE[EMAIL_SUCCESS_ID].scene ?? target.scene) : target.scene;
+      return [
+        ...marked,
+        {
+          key: nextKey.current++,
+          kind: "tree",
+          nodeId: targetId,
+          scene: sceneForReady ?? marked[marked.length - 1].scene,
+        },
+      ];
+    });
 
-    if (target.mode === "email" || !target.quickReplies) focusInputSoon();
+    if (target.mode === "email" || !target.quickReplies) {
+      requestAnimationFrame(() => inputRef.current?.focus());
+    }
   }
 
   function onPill(qr: QuickReply) {
     if (busy || loading) return;
-    const target = TREE[qr.next];
-    if (!target) return;
-    goToNode(target, t(qr.send ?? qr.label, locale), qr.patch);
+    setBusy(true);
+    window.setTimeout(() => setBusy(false), 350);
+    appendTree(qr.next, t(qr.send ?? qr.label, locale), qr.patch);
   }
 
   async function sendToClaude(text: string) {
     const nextHistory: ApiMessage[] = [...history, { role: "user", content: text }];
     setHistory(nextHistory);
-    setMode("claude");
-    setClaudeReply(null);
     setError(null);
     setLoading(true);
 
@@ -159,13 +169,21 @@ export default function Home() {
       setHistory((h) => [...h, { role: "assistant", content: JSON.stringify(crew) }]);
       setState(crew.state);
       setLeadReady(crew.lead_ready_for_crm);
-      setClaudeReply(crew.reply);
-      setFrameKey((k) => k + 1);
+      setFrames((fs) => {
+        const prevScene = fs[fs.length - 1].scene;
+        const scene = crew.lead_ready_for_crm
+          ? (TREE[EMAIL_SUCCESS_ID].scene ?? prevScene)
+          : prevScene;
+        return [
+          ...fs,
+          { key: nextKey.current++, kind: "claude", reply: crew.reply, scene },
+        ];
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unbekannter Fehler.");
     } finally {
       setLoading(false);
-      focusInputSoon();
+      requestAnimationFrame(() => inputRef.current?.focus());
     }
   }
 
@@ -174,25 +192,25 @@ export default function Home() {
     if (!text || loading) return;
     setInput("");
 
-    // Steckt im Email-Schritt eine Email im Text, token-frei abschließen.
-    if (mode === "tree" && node?.mode === "email" && extractEmail(text)) {
-      goToNode(TREE[EMAIL_SUCCESS_ID], text);
+    const active = frames[activeIndex];
+    const activeNode = active.kind === "tree" && active.nodeId ? TREE[active.nodeId] : null;
+
+    // Email-Schritt: steckt eine Email im Text → token-frei abschließen.
+    if (activeNode?.mode === "email" && extractEmail(text)) {
+      appendTree(EMAIL_SUCCESS_ID, text);
       return;
     }
     sendToClaude(text);
   }
 
   function restart() {
-    setMode("tree");
-    setNodeId(ROOT_ID);
-    setScene(TREE[ROOT_ID].scene ?? "opener");
+    setFrames([openingFrame()]);
     setState(INITIAL_STATE);
     setLeadReady(false);
-    setClaudeReply(null);
     setHistory([{ role: "assistant", content: JSON.stringify(openingResponse(locale)) }]);
     setError(null);
     setInput("");
-    setFrameKey((k) => k + 1);
+    requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }));
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -202,12 +220,7 @@ export default function Home() {
     }
   }
 
-  function begin() {
-    setStarted(true);
-    setFrameKey((k) => k + 1);
-  }
-
-  // ── Intro-/Hero-Screen (vor der ersten Frage) ──────────────────────────────
+  // ── Intro-/Hero-Screen ─────────────────────────────────────────────────────
   if (!started) {
     return (
       <div
@@ -220,14 +233,9 @@ export default function Home() {
         }}
         className="relative mx-auto h-[100dvh] w-full max-w-md cursor-pointer overflow-hidden bg-hull-deep text-white select-none"
       >
-        <img
-          src="/scenes/opener.jpg"
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover"
-        />
+        <img src="/scenes/opener.jpg" alt="" className="absolute inset-0 h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-transparent to-black/80" />
 
-        {/* Sprach-Umschalter — über dem Inhalt (z-20), damit Klicks nicht zu begin() durchschlagen */}
         <div
           onClick={(e) => e.stopPropagation()}
           className="absolute right-5 top-[max(1rem,env(safe-area-inset-top))] z-20 flex items-center gap-0.5 rounded-full bg-white/15 p-0.5 text-[11px] font-bold ring-1 ring-white/25 backdrop-blur"
@@ -254,14 +262,11 @@ export default function Home() {
             alt="Pick Your Boat"
             className="animate-frame mx-auto w-64 drop-shadow-[0_6px_22px_rgba(0,0,0,0.5)]"
           />
-
           <div className="flex-1" />
-
           <h1 className="animate-frame text-[44px] font-extrabold leading-[1.03] tracking-tight drop-shadow-[0_2px_14px_rgba(0,0,0,0.6)]">
             {u.heroTitle}
           </h1>
           <BrushAccent />
-
           <div className="mt-7 flex flex-col items-center gap-1 text-white/85">
             <span className="text-sm font-medium drop-shadow">{u.begin}</span>
             <svg
@@ -283,26 +288,43 @@ export default function Home() {
     );
   }
 
+  // ── Gesprächs-Feed (vertikales Scroll-Snap) ────────────────────────────────
   return (
     <div className="relative mx-auto h-[100dvh] w-full max-w-md overflow-hidden bg-hull-deep text-white">
-      {/* Hero-Hintergrund (Platzhalter aus /public/scenes) */}
-      <img
-        key={heroScene}
-        src={`/scenes/${heroScene}.jpg`}
-        alt=""
-        className="animate-frame absolute inset-0 h-full w-full object-cover"
-      />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/25 to-black/80" />
+      <div
+        ref={scrollRef}
+        className="h-full snap-y snap-mandatory overflow-y-scroll scroll-smooth"
+      >
+        {frames.map((f, i) => (
+          <FrameSection
+            key={f.key}
+            frame={f}
+            active={i === activeIndex}
+            locale={locale}
+            loading={loading && i === activeIndex}
+            error={i === activeIndex ? error : null}
+            busy={busy}
+            input={input}
+            setInput={setInput}
+            onPill={onPill}
+            onKeyDown={onKeyDown}
+            send={send}
+            restart={restart}
+            inputRef={inputRef}
+            u={u}
+          />
+        ))}
+      </div>
 
-      <div className="absolute inset-0 flex flex-col">
-        {/* Kopf: horizontales Logo (über dem Fortschrittsbalken) + Sprach-Umschalter */}
-        <header className="flex items-center px-5 pt-[max(1rem,env(safe-area-inset-top))]">
+      {/* Fixes Kopf-Overlay: Logo + Sprache + Fortschritt */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 px-5 pt-[max(1rem,env(safe-area-inset-top))]">
+        <div className="flex items-center">
           <img
             src="/pyb-logo-h.png"
             alt="Pick Your Boat"
             className="h-8 w-auto drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
           />
-          <div className="ml-auto flex items-center gap-0.5 rounded-full bg-white/15 p-0.5 text-[11px] font-bold ring-1 ring-white/25 backdrop-blur">
+          <div className="pointer-events-auto ml-auto flex items-center gap-0.5 rounded-full bg-white/15 p-0.5 text-[11px] font-bold ring-1 ring-white/25 backdrop-blur">
             {(["de", "en"] as Locale[]).map((l) => (
               <button
                 key={l}
@@ -315,10 +337,8 @@ export default function Home() {
               </button>
             ))}
           </div>
-        </header>
-
-        {/* Fortschritt */}
-        <div className="mt-3 flex gap-1.5 px-5">
+        </div>
+        <div className="mt-3 flex gap-1.5">
           {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
             <span
               key={i}
@@ -328,157 +348,177 @@ export default function Home() {
             />
           ))}
         </div>
-
-        {/* Frage / Antwort */}
-        <main className="flex flex-1 flex-col justify-start overflow-y-auto px-6 pt-6 pb-3">
-          <div key={`q-${frameKey}`} className="animate-frame">
-            <h1
-              className={`font-display font-semibold leading-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)] ${
-                bigText ? "text-[28px]" : "text-[19px] leading-snug"
-              }`}
-            >
-              {reply}
-            </h1>
-            <BrushAccent />
-          </div>
-        </main>
-
-        {/* Aktionen */}
-        <footer className="px-5 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          {pills && (
-            <div key={`p-${frameKey}`} className="animate-frame mb-3 flex flex-col gap-2.5">
-              {pills.map((qr) => (
-                <button
-                  key={qr.next + qr.label.de}
-                  onClick={() => onPill(qr)}
-                  disabled={busy}
-                  className="flex items-center gap-3 rounded-2xl bg-white/15 px-4 py-3.5 text-left text-[15px] font-medium ring-1 ring-white/30 backdrop-blur transition hover:bg-white/25 active:scale-[0.98] disabled:opacity-60"
-                >
-                  <span className="h-4 w-4 shrink-0 rounded-full ring-1 ring-white/70" />
-                  <span>{t(qr.label, locale)}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {loading && <TypingDots />}
-
-          {error && (
-            <div className="mb-2 rounded-xl bg-red-900/50 px-3 py-2 text-center text-sm text-red-100 ring-1 ring-red-400/30 backdrop-blur">
-              {error}
-            </div>
-          )}
-
-          {wantsEmail && !wrappedUp && (
-            <div className="mb-2 px-1 text-[11px] font-semibold text-rope drop-shadow">
-              ✦ {u.emailHint}
-            </div>
-          )}
-
-          {/* Eingabe — bleibt immer offen. Auf Email-Screens: klare Ja-Aktion,
-              nie eine „Nein"-Option (wer nicht will, verlässt die Seite). */}
-          {wantsEmail && !wrappedUp ? (
-            <div className="flex flex-col gap-2">
-              <input
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={onKeyDown}
-                disabled={loading}
-                type="text"
-                inputMode="email"
-                autoComplete="email"
-                placeholder={u.placeholderEmail}
-                className="w-full rounded-2xl bg-white/85 px-4 py-3 text-[15px] text-hull-deep placeholder:text-hull-deep/40 outline-none ring-1 ring-white/40 backdrop-blur transition focus:ring-rope disabled:opacity-60"
-              />
-              <button
-                onClick={send}
-                disabled={loading || !input.trim()}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-rope py-3.5 text-[15px] font-semibold text-hull-deep transition hover:bg-rope-dark active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {u.joinCta}
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M5 12h14" />
-                  <path d="m13 6 6 6-6 6" />
-                </svg>
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-end gap-2">
-              <input
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={onKeyDown}
-                disabled={loading}
-                type="text"
-                inputMode="text"
-                autoComplete="off"
-                placeholder={pills ? u.tapHint : u.placeholder}
-                className="min-w-0 flex-1 rounded-2xl bg-white/85 px-4 py-3 text-[15px] text-hull-deep placeholder:text-hull-deep/40 outline-none ring-1 ring-white/40 backdrop-blur transition focus:ring-rope disabled:opacity-60"
-              />
-              <button
-                onClick={send}
-                disabled={loading || !input.trim()}
-                aria-label={u.send}
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rope text-hull-deep transition hover:bg-rope-dark active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M22 2 11 13" />
-                  <path d="M22 2 15 22l-4-9-9-4 20-7Z" />
-                </svg>
-              </button>
-            </div>
-          )}
-
-          {wrappedUp && (
-            <button
-              onClick={restart}
-              className="mt-3 w-full rounded-2xl bg-hull-deep/70 py-3 text-sm font-semibold text-white ring-1 ring-white/20 backdrop-blur transition hover:bg-hull-deep"
-            >
-              ↺ {u.restart}
-            </button>
-          )}
-        </footer>
       </div>
     </div>
   );
 }
 
+function FrameSection({
+  frame,
+  active,
+  locale,
+  loading,
+  error,
+  busy,
+  input,
+  setInput,
+  onPill,
+  onKeyDown,
+  send,
+  restart,
+  inputRef,
+  u,
+}: {
+  frame: Frame;
+  active: boolean;
+  locale: Locale;
+  loading: boolean;
+  error: string | null;
+  busy: boolean;
+  input: string;
+  setInput: (v: string) => void;
+  onPill: (qr: QuickReply) => void;
+  onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  send: () => void;
+  restart: () => void;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  u: ReturnType<typeof ui>;
+}) {
+  const node = frame.kind === "tree" && frame.nodeId ? TREE[frame.nodeId] : null;
+  const reply = node ? t(node.reply, locale) : (frame.reply ?? "");
+  const pills = node?.quickReplies ?? null;
+  const isEmail = node?.mode === "email";
+  const terminal = !!node?.terminal;
+  const bigText = reply.length <= 120;
+
+  return (
+    <section className="relative h-[100dvh] w-full shrink-0 snap-start overflow-hidden">
+      <img src={`/scenes/${frame.scene}.jpg`} alt="" className="absolute inset-0 h-full w-full object-cover" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/25 to-black/80" />
+
+      <div className="absolute inset-0 flex flex-col px-6 pb-[max(1rem,env(safe-area-inset-bottom))] pt-28">
+        <div className="animate-frame">
+          <h1
+            className={`font-display font-semibold leading-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)] ${
+              bigText ? "text-[28px]" : "text-[19px] leading-snug"
+            }`}
+          >
+            {reply}
+          </h1>
+          <BrushAccent />
+        </div>
+
+        <div className="flex-1" />
+
+        {/* Verlauf: gewählte Antwort als Chip */}
+        {!active && frame.chosen && (
+          <div className="mb-2 self-end rounded-2xl bg-rope/85 px-4 py-2 text-[14px] font-medium text-hull-deep shadow">
+            {frame.chosen}
+          </div>
+        )}
+
+        {active && (
+          <div className="animate-frame">
+            {pills && (
+              <div className="mb-3 flex flex-col gap-2.5">
+                {pills.map((qr) => (
+                  <button
+                    key={qr.next + qr.label.de}
+                    onClick={() => onPill(qr)}
+                    disabled={busy}
+                    className="flex items-center gap-3 rounded-2xl bg-white/15 px-4 py-3.5 text-left text-[15px] font-medium ring-1 ring-white/30 backdrop-blur transition hover:bg-white/25 active:scale-[0.98] disabled:opacity-60"
+                  >
+                    <span className="h-4 w-4 shrink-0 rounded-full ring-1 ring-white/70" />
+                    <span>{t(qr.label, locale)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {loading && <TypingDots />}
+
+            {error && (
+              <div className="mb-2 rounded-xl bg-red-900/50 px-3 py-2 text-center text-sm text-red-100 ring-1 ring-red-400/30 backdrop-blur">
+                {error}
+              </div>
+            )}
+
+            {isEmail && !terminal ? (
+              <div className="flex flex-col gap-2">
+                <div className="px-1 text-[11px] font-semibold text-rope drop-shadow">
+                  ✦ {u.emailHint}
+                </div>
+                <input
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={onKeyDown}
+                  disabled={loading}
+                  type="text"
+                  inputMode="email"
+                  autoComplete="email"
+                  placeholder={u.placeholderEmail}
+                  className="w-full rounded-2xl bg-white/85 px-4 py-3 text-[15px] text-hull-deep placeholder:text-hull-deep/40 outline-none ring-1 ring-white/40 backdrop-blur transition focus:ring-rope disabled:opacity-60"
+                />
+                <button
+                  onClick={send}
+                  disabled={loading || !input.trim()}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-rope py-3.5 text-[15px] font-semibold text-hull-deep transition hover:bg-rope-dark active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {u.joinCta}
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14" />
+                    <path d="m13 6 6 6-6 6" />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-end gap-2">
+                <input
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={onKeyDown}
+                  disabled={loading}
+                  type="text"
+                  inputMode="text"
+                  autoComplete="off"
+                  placeholder={pills ? u.tapHint : u.placeholder}
+                  className="min-w-0 flex-1 rounded-2xl bg-white/85 px-4 py-3 text-[15px] text-hull-deep placeholder:text-hull-deep/40 outline-none ring-1 ring-white/40 backdrop-blur transition focus:ring-rope disabled:opacity-60"
+                />
+                <button
+                  onClick={send}
+                  disabled={loading || !input.trim()}
+                  aria-label={u.send}
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rope text-hull-deep transition hover:bg-rope-dark active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 2 11 13" />
+                    <path d="M22 2 15 22l-4-9-9-4 20-7Z" />
+                  </svg>
+                </button>
+              </div>
+            )}
+
+            {terminal && (
+              <button
+                onClick={restart}
+                className="mt-3 w-full rounded-2xl bg-hull-deep/70 py-3 text-sm font-semibold text-white ring-1 ring-white/20 backdrop-blur transition hover:bg-hull-deep"
+              >
+                ↺ {u.restart}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function BrushAccent() {
   return (
-    <svg
-      width="116"
-      height="16"
-      viewBox="0 0 116 16"
-      fill="none"
-      className="mt-3"
-      aria-hidden
-    >
-      <path
-        d="M2 8 Q 16 2 30 8 T 58 8 T 86 8 T 114 8"
-        stroke="#d9a441"
-        strokeWidth="4"
-        strokeLinecap="round"
-      />
+    <svg width="116" height="16" viewBox="0 0 116 16" fill="none" className="mt-3" aria-hidden>
+      <path d="M2 8 Q 16 2 30 8 T 58 8 T 86 8 T 114 8" stroke="#d9a441" strokeWidth="4" strokeLinecap="round" />
     </svg>
   );
 }
