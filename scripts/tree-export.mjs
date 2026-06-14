@@ -1,14 +1,8 @@
-// tree.json → tree.xlsx
+// tree.json → tree.xlsx  (eine flache Tabelle "Tree")
 //
-// Erzeugt eine bearbeitbare Excel-Mappe aus app/tree.json. Läuft beim Build /
-// per `npm run tree:export` — NICHT in der App. Die App liest weiterhin nur
-// tree.json; tree.xlsx ist reine Bearbeitungsoberfläche.
-//
-// Blätter:
-//   - Config : root + emailSuccessNode (Schlüssel/Wert)
-//   - Nodes  : ein Schritt pro Zeile (Texte, Flags, Node-patch)
-//   - Buttons: ein Button pro Zeile (Reihenfolge der Zeilen = Reihenfolge im Chat)
-//   - Lists  : (versteckt) Auswahllisten für die Dropdowns
+// Pro Seite eine Zeile mit Frage (question_de/en) + Seiten-Infos, darunter je
+// eine Zeile pro vorgefertigter Antwort (answer_de/en) mit derselben page-ID.
+// Läuft per `npm run tree:export` — NICHT in der App.
 
 import ExcelJS from "exceljs";
 import { readFile } from "node:fs/promises";
@@ -18,58 +12,82 @@ const ROOT = process.cwd();
 const JSON_PATH = path.resolve(ROOT, "app/tree.json");
 const XLSX_PATH = path.resolve(ROOT, "tree.xlsx");
 
-const STATUS = [
-  "sailing_now",
-  "planning",
-  "dreaming",
-  "charterer",
-  "pro",
-  "unknown",
-];
+const STATUS = ["sailing_now", "planning", "dreaming", "charterer", "pro", "unknown"];
 const PAIN = [
-  "hidden_costs",
-  "boat_mismatch",
-  "handover_chaos",
-  "vendor_unresponsive",
-  "fake_reviews",
-  "price",
-  "no_crew",
-  "no_license",
-  "other",
+  "hidden_costs", "boat_mismatch", "handover_chaos", "vendor_unresponsive",
+  "fake_reviews", "price", "no_crew", "no_license", "other",
 ];
 const NEXT_ACTION = [
-  "ask_status",
-  "ask_pain",
-  "reveal_and_pitch",
-  "request_email",
-  "confirm_email",
-  "wrap_up",
-  "goodbye",
+  "ask_status", "ask_pain", "reveal_and_pitch", "request_email",
+  "confirm_email", "wrap_up", "goodbye",
 ];
 
 const tree = JSON.parse(await readFile(JSON_PATH, "utf8"));
 const nodeIds = Object.keys(tree.nodes);
 
 const wb = new ExcelJS.Workbook();
-
-// ── Config ─────────────────────────────────────────────────────────────────
-const config = wb.addWorksheet("Config");
-config.columns = [
-  { header: "key", key: "key", width: 20 },
-  { header: "value", key: "value", width: 30 },
+const ws = wb.addWorksheet("Tree");
+ws.columns = [
+  { header: "page", key: "page", width: 20 },
+  { header: "scene", key: "scene", width: 10 },
+  { header: "flags", key: "flags", width: 24 },
+  { header: "nextAction", key: "nextAction", width: 15 },
+  { header: "question_de", key: "question_de", width: 60 },
+  { header: "question_en", key: "question_en", width: 60 },
+  { header: "answer_de", key: "answer_de", width: 34 },
+  { header: "answer_en", key: "answer_en", width: 34 },
+  { header: "next", key: "next", width: 20 },
+  { header: "set_status", key: "set_status", width: 14 },
+  { header: "set_pain", key: "set_pain", width: 16 },
+  { header: "set_intent", key: "set_intent", width: 11 },
 ];
-config.addRow({ key: "root", value: tree.root });
-config.addRow({ key: "emailSuccessNode", value: tree.emailSuccessNode });
-config.getRow(1).font = { bold: true };
 
-// ── Lists (Auswahllisten für Dropdowns) ──────────────────────────────────────
+function flagsFor(id, n) {
+  const f = [];
+  if (id === tree.root) f.push("root");
+  if (n.mode === "email") f.push("email");
+  if (n.terminal) f.push("terminal");
+  if (n.leadReady) f.push("leadReady");
+  if (id === tree.emailSuccessNode) f.push("emailSuccess");
+  return f.join(",");
+}
+
+for (const [id, n] of Object.entries(tree.nodes)) {
+  ws.addRow({
+    page: id,
+    scene: n.scene ?? "",
+    flags: flagsFor(id, n),
+    nextAction: n.nextAction,
+    question_de: n.reply.de,
+    question_en: n.reply.en,
+    set_status: n.patch?.status ?? "",
+    set_pain: (n.patch?.pain_points ?? []).join(","),
+    set_intent: n.patch?.intent_strength ?? "",
+  });
+  for (const qr of n.quickReplies ?? []) {
+    ws.addRow({
+      page: id,
+      answer_de: qr.label.de,
+      answer_en: qr.label.en,
+      next: qr.next,
+      set_status: qr.patch?.status ?? "",
+      set_pain: (qr.patch?.pain_points ?? []).join(","),
+      set_intent: qr.patch?.intent_strength ?? "",
+    });
+  }
+}
+ws.getRow(1).font = { bold: true };
+ws.getColumn("question_de").alignment = { wrapText: true, vertical: "top" };
+ws.getColumn("question_en").alignment = { wrapText: true, vertical: "top" };
+
+// Versteckte Hilfslisten für Dropdowns
 const lists = wb.addWorksheet("Lists");
 lists.state = "hidden";
 lists.columns = [
-  { header: "node_ids", key: "node_ids", width: 24 },
-  { header: "status", key: "status", width: 20 },
-  { header: "pain", key: "pain", width: 22 },
-  { header: "next_action", key: "next_action", width: 20 },
+  { header: "node_ids", width: 24 },
+  { header: "status", width: 16 },
+  { header: "pain", width: 18 },
+  { header: "next_action", width: 16 },
 ];
 const maxLen = Math.max(nodeIds.length, STATUS.length, PAIN.length, NEXT_ACTION.length);
 for (let i = 0; i < maxLen; i++) {
@@ -80,90 +98,20 @@ for (let i = 0; i < maxLen; i++) {
     next_action: NEXT_ACTION[i] ?? null,
   });
 }
-const r = {
+const ref = {
   nodes: `Lists!$A$2:$A$${nodeIds.length + 1}`,
   status: `Lists!$B$2:$B$${STATUS.length + 1}`,
   pain: `Lists!$C$2:$C$${PAIN.length + 1}`,
-  next: `Lists!$D$2:$D$${NEXT_ACTION.length + 1}`,
+  na: `Lists!$D$2:$D$${NEXT_ACTION.length + 1}`,
 };
-
-// ── Nodes ────────────────────────────────────────────────────────────────────
-const nodes = wb.addWorksheet("Nodes");
-nodes.columns = [
-  { header: "id", key: "id", width: 22 },
-  { header: "reply", key: "reply", width: 90 },
-  { header: "nextAction", key: "nextAction", width: 16 },
-  { header: "mode", key: "mode", width: 10 },
-  { header: "terminal", key: "terminal", width: 10 },
-  { header: "leadReady", key: "leadReady", width: 10 },
-  { header: "patch_next_action", key: "patch_next_action", width: 18 },
-  { header: "patch_intent", key: "patch_intent", width: 12 },
-];
-for (const [id, n] of Object.entries(tree.nodes)) {
-  nodes.addRow({
-    id,
-    reply: n.reply,
-    nextAction: n.nextAction,
-    mode: n.mode ?? "",
-    terminal: n.terminal ? "x" : "",
-    leadReady: n.leadReady ? "x" : "",
-    patch_next_action: n.patch?.next_action ?? "",
-    patch_intent: n.patch?.intent_strength ?? "",
-  });
-}
-
-// ── Buttons ──────────────────────────────────────────────────────────────────
-const buttons = wb.addWorksheet("Buttons");
-buttons.columns = [
-  { header: "node", key: "node", width: 22 },
-  { header: "label", key: "label", width: 36 },
-  { header: "send", key: "send", width: 24 },
-  { header: "next", key: "next", width: 22 },
-  { header: "set_status", key: "set_status", width: 16 },
-  { header: "set_pain", key: "set_pain", width: 18 },
-  { header: "set_intent", key: "set_intent", width: 12 },
-  { header: "set_next_action", key: "set_next_action", width: 18 },
-];
-for (const [id, n] of Object.entries(tree.nodes)) {
-  for (const qr of n.quickReplies ?? []) {
-    buttons.addRow({
-      node: id,
-      label: qr.label,
-      send: qr.send ?? "",
-      next: qr.next,
-      set_status: qr.patch?.status ?? "",
-      set_pain: (qr.patch?.pain_points ?? []).join(","),
-      set_intent: qr.patch?.intent_strength ?? "",
-      set_next_action: qr.patch?.next_action ?? "",
-    });
-  }
-}
-
-// ── Dropdowns (Datengültigkeit) ──────────────────────────────────────────────
-const list = (formula) => ({ type: "list", allowBlank: true, formulae: [formula] });
-const ROWS = 300; // großzügiger Puffer, damit auch neue Zeilen Dropdowns haben
-
-nodes.getRow(1).font = { bold: true };
-nodes.dataValidations.add(`C2:C${ROWS}`, list(r.next)); // nextAction
-nodes.dataValidations.add(`D2:D${ROWS}`, list('"email"')); // mode
-nodes.dataValidations.add(`E2:E${ROWS}`, list('"x"')); // terminal
-nodes.dataValidations.add(`F2:F${ROWS}`, list('"x"')); // leadReady
-nodes.dataValidations.add(`G2:G${ROWS}`, list(r.next)); // patch_next_action
-nodes.dataValidations.add(`H2:H${ROWS}`, list('"1,2,3,4,5"')); // patch_intent
-
-buttons.getRow(1).font = { bold: true };
-buttons.dataValidations.add(`A2:A${ROWS}`, list(r.nodes)); // node
-buttons.dataValidations.add(`D2:D${ROWS}`, list(r.nodes)); // next
-buttons.dataValidations.add(`E2:E${ROWS}`, list(r.status)); // set_status
-buttons.dataValidations.add(`F2:F${ROWS}`, list(r.pain)); // set_pain
-buttons.dataValidations.add(`G2:G${ROWS}`, list('"1,2,3,4,5"')); // set_intent
-buttons.dataValidations.add(`H2:H${ROWS}`, list(r.next)); // set_next_action
-
-// Zeilenumbruch in den langen reply-Texten anzeigen
-nodes.getColumn("reply").alignment = { wrapText: true, vertical: "top" };
+// Dropdowns als Vorschlag (showErrorMessage:false → neue Werte bleiben erlaubt)
+const dv = (formula) => ({ type: "list", allowBlank: true, showErrorMessage: false, formulae: [formula] });
+const ROWS = 400;
+ws.dataValidations.add(`D2:D${ROWS}`, dv(ref.na)); // nextAction
+ws.dataValidations.add(`I2:I${ROWS}`, dv(ref.nodes)); // next
+ws.dataValidations.add(`J2:J${ROWS}`, dv(ref.status)); // set_status
+ws.dataValidations.add(`K2:K${ROWS}`, dv(ref.pain)); // set_pain
+ws.dataValidations.add(`L2:L${ROWS}`, dv('"1,2,3,4,5"')); // set_intent
 
 await wb.xlsx.writeFile(XLSX_PATH);
-console.log(
-  `✓ ${path.relative(ROOT, XLSX_PATH)} geschrieben — ${nodeIds.length} Nodes, ` +
-    `${buttons.rowCount - 1} Buttons.`,
-);
+console.log(`✓ ${path.relative(ROOT, XLSX_PATH)} — ${nodeIds.length} Seiten`);

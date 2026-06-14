@@ -1,8 +1,9 @@
-// tree.xlsx → app/tree.json
+// tree.xlsx → app/tree.json  (eine flache Tabelle "Tree")
 //
-// Liest die bearbeitete Excel-Mappe und schreibt sie zurück nach app/tree.json.
-// Läuft per `npm run tree:import` — NICHT in der App. Prüft vor dem Schreiben
-// alle next-Referenzen; bei Fehlern wird tree.json NICHT überschrieben.
+// Gruppiert die Zeilen nach page-ID: Zeile mit question_* definiert die Seite,
+// Zeilen mit answer_* (gleiche page) sind ihre Antworten (Reihenfolge = Chat).
+// Läuft per `npm run tree:import`. Prüft Referenzen; bei Fehlern wird tree.json
+// NICHT überschrieben.
 
 import ExcelJS from "exceljs";
 import { writeFile } from "node:fs/promises";
@@ -12,128 +13,116 @@ const ROOT = process.cwd();
 const JSON_PATH = path.resolve(ROOT, "app/tree.json");
 const XLSX_PATH = path.resolve(ROOT, "tree.xlsx");
 
-// Zelle als getrimmter String ("" wenn leer).
 const str = (v) => {
   if (v === null || v === undefined) return "";
-  if (typeof v === "object" && "text" in v) return String(v.text).trim(); // rich text
-  if (typeof v === "object" && "result" in v) return String(v.result).trim(); // formula
+  if (typeof v === "object" && "text" in v) return String(v.text).trim();
+  if (typeof v === "object" && "result" in v) return String(v.result).trim();
   return String(v).trim();
 };
-
-// Header-Zeile → { spaltenname: spaltenindex (1-based) }
-function headerMap(ws) {
-  const map = {};
-  ws.getRow(1).eachCell((cell, col) => {
-    const name = str(cell.value);
-    if (name) map[name] = col;
-  });
-  return map;
-}
-
-// Über alle Datenzeilen (ab Zeile 2) iterieren; ganz leere Zeilen überspringen.
-function eachDataRow(ws, fn) {
-  for (let i = 2; i <= ws.rowCount; i++) {
-    const row = ws.getRow(i);
-    const get = (name, h) => str(row.getCell(h[name]).value);
-    fn(row, get);
-  }
-}
+const list = (s) => s.split(",").map((x) => x.trim()).filter(Boolean);
 
 const wb = new ExcelJS.Workbook();
 await wb.xlsx.readFile(XLSX_PATH);
+const ws = wb.getWorksheet("Tree");
+if (!ws) throw new Error("Blatt 'Tree' fehlt in tree.xlsx.");
 
-const configWs = wb.getWorksheet("Config");
-const nodesWs = wb.getWorksheet("Nodes");
-const buttonsWs = wb.getWorksheet("Buttons");
-if (!configWs || !nodesWs || !buttonsWs) {
-  throw new Error("tree.xlsx braucht die Blätter Config, Nodes und Buttons.");
-}
-
-// ── Config ───────────────────────────────────────────────────────────────────
-const cfg = {};
-const cfgH = headerMap(configWs);
-eachDataRow(configWs, (_row, get) => {
-  const key = get("key", cfgH);
-  if (key) cfg[key] = get("value", cfgH);
+const H = {};
+ws.getRow(1).eachCell((c, col) => {
+  const n = str(c.value);
+  if (n) H[n] = col;
 });
+for (const k of ["page", "nextAction", "question_de", "question_en", "answer_de", "answer_en", "next"]) {
+  if (!H[k]) throw new Error(`Spalte '${k}' fehlt in tree.xlsx.`);
+}
+const get = (row, name) => (H[name] ? str(row.getCell(H[name]).value) : "");
 
-// ── Nodes ──────────────────────────────────────────────────────────────────
 const nodes = {};
 const order = [];
-const nH = headerMap(nodesWs);
-eachDataRow(nodesWs, (_row, get) => {
-  const id = get("id", nH);
-  if (!id) return;
+let root = null;
+let emailSuccess = null;
 
-  const node = { reply: get("reply", nH), nextAction: get("nextAction", nH) };
-  if (get("mode", nH) === "email") node.mode = "email";
-  if (get("terminal", nH)) node.terminal = true;
-  if (get("leadReady", nH)) node.leadReady = true;
+for (let i = 2; i <= ws.rowCount; i++) {
+  const row = ws.getRow(i);
+  const page = get(row, "page");
+  if (!page) continue;
 
-  const patch = {};
-  const pNext = get("patch_next_action", nH);
-  const pIntent = get("patch_intent", nH);
-  if (pNext) patch.next_action = pNext;
-  if (pIntent) patch.intent_strength = Number(pIntent);
-  if (Object.keys(patch).length) node.patch = patch;
+  const qd = get(row, "question_de");
+  const qen = get(row, "question_en");
+  const ad = get(row, "answer_de");
 
-  nodes[id] = node;
-  order.push(id);
-});
+  if (qd || qen) {
+    // ── Seiten-/Frage-Zeile ──
+    const flags = list(get(row, "flags").replace(/\s+/g, ","));
+    const intent = get(row, "set_intent");
+    const st = get(row, "set_status");
+    const pn = get(row, "set_pain");
+    const nextAction = get(row, "nextAction");
 
-// ── Buttons (Zeilenreihenfolge = Reihenfolge im Chat) ─────────────────────────
-const bH = headerMap(buttonsWs);
-eachDataRow(buttonsWs, (_row, get) => {
-  const nodeId = get("node", bH);
-  const label = get("label", bH);
-  if (!nodeId && !label) return; // leere Zeile
-  if (!nodes[nodeId]) {
-    throw new Error(`Button "${label}" verweist auf unbekannten Node "${nodeId}".`);
+    const node = {};
+    const scene = get(row, "scene");
+    if (scene) node.scene = scene;
+    node.reply = { de: qd, en: qen };
+    node.nextAction = nextAction;
+    if (flags.includes("email")) node.mode = "email";
+    if (flags.includes("terminal")) node.terminal = true;
+    if (flags.includes("leadReady")) node.leadReady = true;
+
+    const patch = {};
+    if (st) patch.status = st;
+    if (pn) patch.pain_points = list(pn);
+    if (intent) {
+      patch.next_action = nextAction;
+      patch.intent_strength = Number(intent);
+    }
+    if (Object.keys(patch).length) node.patch = patch;
+    node.quickReplies = [];
+
+    nodes[page] = node;
+    order.push(page);
+    if (flags.includes("root")) root = page;
+    if (flags.includes("emailSuccess")) emailSuccess = page;
+  } else if (ad) {
+    // ── Antwort-Zeile ──
+    if (!nodes[page]) throw new Error(`Antwort "${ad}" steht vor ihrer Seite "${page}".`);
+    const qr = { label: { de: ad, en: get(row, "answer_en") }, next: get(row, "next") };
+    const patch = {};
+    const st = get(row, "set_status");
+    const pn = get(row, "set_pain");
+    const intent = get(row, "set_intent");
+    if (st) patch.status = st;
+    if (pn) patch.pain_points = list(pn);
+    if (intent) patch.intent_strength = Number(intent);
+    if (Object.keys(patch).length) qr.patch = patch;
+    nodes[page].quickReplies.push(qr);
   }
+}
 
-  const qr = { label, next: get("next", bH) };
-  const send = get("send", bH);
-  if (send) qr.send = send;
+// Leere quickReplies entfernen (reine Freitext-Seiten)
+for (const id of order) {
+  if (nodes[id].quickReplies.length === 0) delete nodes[id].quickReplies;
+}
 
-  const patch = {};
-  const setStatus = get("set_status", bH);
-  const setPain = get("set_pain", bH);
-  const setIntent = get("set_intent", bH);
-  const setNext = get("set_next_action", bH);
-  if (setStatus) patch.status = setStatus;
-  if (setPain) patch.pain_points = setPain.split(",").map((s) => s.trim()).filter(Boolean);
-  if (setIntent) patch.intent_strength = Number(setIntent);
-  if (setNext) patch.next_action = setNext;
-  if (Object.keys(patch).length) qr.patch = patch;
+if (!root) root = order[0];
+if (!emailSuccess) emailSuccess = order.find((id) => nodes[id].leadReady) ?? order[order.length - 1];
 
-  (nodes[nodeId].quickReplies ??= []).push(qr);
-});
-
-// Node-Reihenfolge aus dem Nodes-Blatt beibehalten.
 const orderedNodes = {};
 for (const id of order) orderedNodes[id] = nodes[id];
+const tree = { root, emailSuccessNode: emailSuccess, nodes: orderedNodes };
 
-const tree = {
-  root: cfg.root,
-  emailSuccessNode: cfg.emailSuccessNode,
-  nodes: orderedNodes,
-};
-
-// ── Validierung (gleiche Regeln wie app/tree.ts) ─────────────────────────────
-const ids = new Set(Object.keys(tree.nodes));
+// ── Validierung (wie app/tree.ts) ──
+const ids = new Set(order);
+const both = (x) => x && typeof x === "object" && "de" in x && "en" in x;
 const problems = [];
-if (!ids.has(tree.root)) problems.push(`root "${tree.root}" fehlt unter nodes`);
+if (!ids.has(tree.root)) problems.push(`root "${tree.root}" fehlt unter den Seiten`);
 if (!ids.has(tree.emailSuccessNode)) {
-  problems.push(`emailSuccessNode "${tree.emailSuccessNode}" fehlt unter nodes`);
+  problems.push(`emailSuccessNode "${tree.emailSuccessNode}" fehlt unter den Seiten`);
 }
 for (const [id, n] of Object.entries(tree.nodes)) {
-  if (!n.reply) problems.push(`Node "${id}": "reply" fehlt`);
-  if (!n.nextAction) problems.push(`Node "${id}": "nextAction" fehlt`);
+  if (!both(n.reply)) problems.push(`Seite "${id}": Frage braucht de + en`);
+  if (!n.nextAction) problems.push(`Seite "${id}": nextAction fehlt`);
   for (const qr of n.quickReplies ?? []) {
-    if (!qr.label) problems.push(`Node "${id}": Button ohne "label"`);
-    if (!ids.has(qr.next)) {
-      problems.push(`Node "${id}": Button "${qr.label}" verweist auf unbekannten Node "${qr.next}"`);
-    }
+    if (!both(qr.label)) problems.push(`Seite "${id}": Antwort-Text braucht de + en`);
+    if (!ids.has(qr.next)) problems.push(`Seite "${id}": Antwort verweist auf unbekannte Seite "${qr.next}"`);
   }
 }
 if (problems.length) {
@@ -143,6 +132,4 @@ if (problems.length) {
 }
 
 await writeFile(JSON_PATH, JSON.stringify(tree, null, 2) + "\n", "utf8");
-console.log(
-  `✓ ${path.relative(ROOT, JSON_PATH)} geschrieben — ${ids.size} Nodes.`,
-);
+console.log(`✓ ${path.relative(ROOT, JSON_PATH)} — ${order.length} Seiten`);

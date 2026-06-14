@@ -10,11 +10,56 @@
       },
       "nextAction": "ask_status",
       "quickReplies": [
-        { "label": { "de": "Auf dem Wasser 🌊", "en": "On the water 🌊" }, "next": "pain_sailing", "patch": { "status": "sailing_now" } },
-        { "label": { "de": "In der Planung 🗺️", "en": "Planning a trip 🗺️" }, "next": "pain_planning", "patch": { "status": "planning" } },
-        { "label": { "de": "Noch am Überlegen 💭", "en": "Still dreaming 💭" }, "next": "pain_dreaming", "patch": { "status": "dreaming" } },
-        { "label": { "de": "Ich verchartere selbst ⛵", "en": "I charter out myself ⛵" }, "next": "pain_charterer", "patch": { "status": "charterer" } },
-        { "label": { "de": "Profi (Schule/Skipper) 🧭", "en": "Pro (school/skipper) 🧭" }, "next": "pain_pro", "patch": { "status": "pro" } }
+        {
+          "label": {
+            "de": "Auf dem Wasser 🌊",
+            "en": "On the water 🌊"
+          },
+          "next": "pain_sailing",
+          "patch": {
+            "status": "sailing_now"
+          }
+        },
+        {
+          "label": {
+            "de": "In der Planung 🗺️",
+            "en": "Planning a trip 🗺️"
+          },
+          "next": "pain_planning",
+          "patch": {
+            "status": "planning"
+          }
+        },
+        {
+          "label": {
+            "de": "Noch am Überlegen 💭",
+            "en": "Still dreaming 💭"
+          },
+          "next": "pain_dreaming",
+          "patch": {
+            "status": "dreaming"
+          }
+        },
+        {
+          "label": {
+            "de": "Ich verchartere selbst ⛵",
+            "en": "I charter out myself ⛵"
+          },
+          "next": "pain_charterer",
+          "patch": {
+            "status": "charterer"
+          }
+        },
+        {
+          "label": {
+            "de": "Profi (Schule/Skipper) 🧭",
+            "en": "Pro (school/skipper) 🧭"
+          },
+          "next": "pain_pro",
+          "patch": {
+            "status": "pro"
+          }
+        }
       ]
     },
     "pain_sailing": {
@@ -25,11 +70,66 @@
       },
       "nextAction": "ask_pain",
       "quickReplies": [
-        { "label": { "de": "Versteckte Kosten 💸", "en": "Hidden costs 💸" }, "next": "pitch_hidden_costs", "patch": { "pain_points": ["hidden_costs"] } },
-        { "label": { "de": "Boot wich von den Fotos ab 📸", "en": "Boat differed from the photos 📸" }, "next": "pitch_boat_mismatch", "patch": { "pain_points": ["boat_mismatch"] } },
-        { "label": { "de": "Probleme bei der Übergabe ⚓", "en": "Problems at handover ⚓" }, "next": "pitch_handover", "patch": { "pain_points": ["handover_chaos"] } },
-        { "label": { "de": "Vercharterer schlecht erreichbar 📵", "en": "Charter company hard to reach 📵" }, "next": "pitch_unresponsive", "patch": { "pain_points": ["vendor_unresponsive"] } },
-        { "label": { "de": "Etwas anderes…", "en": "Something else…" }, "send": { "de": "Etwas anderes…", "en": "Something else…" }, "next": "pain_other", "patch": { "pain_points": ["other"] } }
+        {
+          "label": {
+            "de": "Versteckte Kosten 💸",
+            "en": "Hidden costs 💸"
+          },
+          "next": "pitch_hidden_costs",
+          "patch": {
+            "pain_points": [
+              "hidden_costs"
+            ]
+          }
+        },
+        {
+          "label": {
+            "de": "Boot wich von den Fotos ab 📸",
+            "en": "Boat differed from the photos 📸"
+          },
+          "next": "pitch_boat_mismatch",
+          "patch": {
+            "pain_points": [
+              "boat_mismatch"
+            ]
+          }
+        },
+        {
+          "label": {
+            "de": "Probleme bei der Übergabe ⚓",
+            "en": "Problems at handover ⚓"
+          },
+          "next": "pitch_handover",
+          "patch": {
+            "pain_points": [
+              "handover_chaos"
+            ]
+          }
+        },
+        {
+          "label": {
+            "de": "Vercharterer schlecht erreichbar 📵",
+            "en": "Charter company hard to reach 📵"
+          },
+          "next": "pitch_unresponsive",
+          "patch": {
+            "pain_points": [
+              "vendor_unresponsive"
+            ]
+          }
+        },
+        {
+          "label": {
+            "de": "Etwas anderes…",
+            "en": "Something else…"
+          },
+          "next": "pain_other",
+          "patch": {
+            "pain_points": [
+              "other"
+            ]
+          }
+        }
       ]
     },
     "pain_planning": {
@@ -40,10 +140,54 @@
       },
       "nextAction": "ask_pain",
       "quickReplies": [
-        { "label": { "de": "Ich traue den Bewertungen nicht 🌟", "en": "I don't trust the reviews 🌟" }, "next": "pitch_fake_reviews", "patch": { "pain_points": ["fake_reviews"] } },
-        { "label": { "de": "Preise sind intransparent 💸", "en": "Prices are intransparent 💸" }, "next": "pitch_price", "patch": { "pain_points": ["price"] } },
-        { "label": { "de": "Finde kein passendes Boot ⛵", "en": "Can't find a suitable boat ⛵" }, "next": "pitch_boat_mismatch", "patch": { "pain_points": ["boat_mismatch"] } },
-        { "label": { "de": "Etwas anderes…", "en": "Something else…" }, "send": { "de": "Etwas anderes…", "en": "Something else…" }, "next": "pain_other", "patch": { "pain_points": ["other"] } }
+        {
+          "label": {
+            "de": "Ich traue den Bewertungen nicht 🌟",
+            "en": "I don't trust the reviews 🌟"
+          },
+          "next": "pitch_fake_reviews",
+          "patch": {
+            "pain_points": [
+              "fake_reviews"
+            ]
+          }
+        },
+        {
+          "label": {
+            "de": "Preise sind intransparent 💸",
+            "en": "Prices are intransparent 💸"
+          },
+          "next": "pitch_price",
+          "patch": {
+            "pain_points": [
+              "price"
+            ]
+          }
+        },
+        {
+          "label": {
+            "de": "Finde kein passendes Boot ⛵",
+            "en": "Can't find a suitable boat ⛵"
+          },
+          "next": "pitch_boat_mismatch",
+          "patch": {
+            "pain_points": [
+              "boat_mismatch"
+            ]
+          }
+        },
+        {
+          "label": {
+            "de": "Etwas anderes…",
+            "en": "Something else…"
+          },
+          "next": "pain_other",
+          "patch": {
+            "pain_points": [
+              "other"
+            ]
+          }
+        }
       ]
     },
     "pain_dreaming": {
@@ -54,10 +198,54 @@
       },
       "nextAction": "ask_pain",
       "quickReplies": [
-        { "label": { "de": "Der Preis 💸", "en": "The price 💸" }, "next": "pitch_price", "patch": { "pain_points": ["price"] } },
-        { "label": { "de": "Fehlende Crew 🧑‍🤝‍🧑", "en": "Missing crew 🧑‍🤝‍🧑" }, "next": "pitch_crew_license", "patch": { "pain_points": ["no_crew"] } },
-        { "label": { "de": "Kein Skipperschein 🪪", "en": "No skipper's license 🪪" }, "next": "pitch_crew_license", "patch": { "pain_points": ["no_license"] } },
-        { "label": { "de": "Etwas anderes…", "en": "Something else…" }, "send": { "de": "Etwas anderes…", "en": "Something else…" }, "next": "pain_other", "patch": { "pain_points": ["other"] } }
+        {
+          "label": {
+            "de": "Der Preis 💸",
+            "en": "The price 💸"
+          },
+          "next": "pitch_price",
+          "patch": {
+            "pain_points": [
+              "price"
+            ]
+          }
+        },
+        {
+          "label": {
+            "de": "Fehlende Crew 🧑‍🤝‍🧑",
+            "en": "Missing crew 🧑‍🤝‍🧑"
+          },
+          "next": "pitch_crew_license",
+          "patch": {
+            "pain_points": [
+              "no_crew"
+            ]
+          }
+        },
+        {
+          "label": {
+            "de": "Kein Skipperschein 🪪",
+            "en": "No skipper's license 🪪"
+          },
+          "next": "pitch_crew_license",
+          "patch": {
+            "pain_points": [
+              "no_license"
+            ]
+          }
+        },
+        {
+          "label": {
+            "de": "Etwas anderes…",
+            "en": "Something else…"
+          },
+          "next": "pain_other",
+          "patch": {
+            "pain_points": [
+              "other"
+            ]
+          }
+        }
       ]
     },
     "pain_charterer": {
@@ -68,10 +256,54 @@
       },
       "nextAction": "ask_pain",
       "quickReplies": [
-        { "label": { "de": "Fake-Bewertungen 🌟", "en": "Fake reviews 🌟" }, "next": "pitch_fake_reviews", "patch": { "pain_points": ["fake_reviews"] } },
-        { "label": { "de": "Zu hohe Plattform-Gebühren 💸", "en": "Platform fees too high 💸" }, "next": "pitch_price", "patch": { "pain_points": ["price"] } },
-        { "label": { "de": "Gäste geben kaum Feedback 📵", "en": "Guests barely give feedback 📵" }, "next": "pitch_unresponsive", "patch": { "pain_points": ["vendor_unresponsive"] } },
-        { "label": { "de": "Etwas anderes…", "en": "Something else…" }, "send": { "de": "Etwas anderes…", "en": "Something else…" }, "next": "pain_other", "patch": { "pain_points": ["other"] } }
+        {
+          "label": {
+            "de": "Fake-Bewertungen 🌟",
+            "en": "Fake reviews 🌟"
+          },
+          "next": "pitch_fake_reviews",
+          "patch": {
+            "pain_points": [
+              "fake_reviews"
+            ]
+          }
+        },
+        {
+          "label": {
+            "de": "Zu hohe Plattform-Gebühren 💸",
+            "en": "Platform fees too high 💸"
+          },
+          "next": "pitch_price",
+          "patch": {
+            "pain_points": [
+              "price"
+            ]
+          }
+        },
+        {
+          "label": {
+            "de": "Gäste geben kaum Feedback 📵",
+            "en": "Guests barely give feedback 📵"
+          },
+          "next": "pitch_unresponsive",
+          "patch": {
+            "pain_points": [
+              "vendor_unresponsive"
+            ]
+          }
+        },
+        {
+          "label": {
+            "de": "Etwas anderes…",
+            "en": "Something else…"
+          },
+          "next": "pain_other",
+          "patch": {
+            "pain_points": [
+              "other"
+            ]
+          }
+        }
       ]
     },
     "pain_pro": {
@@ -82,9 +314,42 @@
       },
       "nextAction": "ask_pain",
       "quickReplies": [
-        { "label": { "de": "Ehrliches, verifiziertes Feedback 🌟", "en": "Honest, verified feedback 🌟" }, "next": "pitch_fake_reviews", "patch": { "pain_points": ["fake_reviews"] } },
-        { "label": { "de": "Weniger Aufwand bei Buchungen ⚓", "en": "Less hassle with bookings ⚓" }, "next": "pitch_handover", "patch": { "pain_points": ["handover_chaos"] } },
-        { "label": { "de": "Etwas anderes…", "en": "Something else…" }, "send": { "de": "Etwas anderes…", "en": "Something else…" }, "next": "pain_other", "patch": { "pain_points": ["other"] } }
+        {
+          "label": {
+            "de": "Ehrliches, verifiziertes Feedback 🌟",
+            "en": "Honest, verified feedback 🌟"
+          },
+          "next": "pitch_fake_reviews",
+          "patch": {
+            "pain_points": [
+              "fake_reviews"
+            ]
+          }
+        },
+        {
+          "label": {
+            "de": "Weniger Aufwand bei Buchungen ⚓",
+            "en": "Less hassle with bookings ⚓"
+          },
+          "next": "pitch_handover",
+          "patch": {
+            "pain_points": [
+              "handover_chaos"
+            ]
+          }
+        },
+        {
+          "label": {
+            "de": "Etwas anderes…",
+            "en": "Something else…"
+          },
+          "next": "pain_other",
+          "patch": {
+            "pain_points": [
+              "other"
+            ]
+          }
+        }
       ]
     },
     "pain_other": {
@@ -103,7 +368,10 @@
       },
       "nextAction": "request_email",
       "mode": "email",
-      "patch": { "next_action": "request_email", "intent_strength": 3 }
+      "patch": {
+        "next_action": "request_email",
+        "intent_strength": 3
+      }
     },
     "pitch_boat_mismatch": {
       "scene": "cove",
@@ -113,7 +381,10 @@
       },
       "nextAction": "request_email",
       "mode": "email",
-      "patch": { "next_action": "request_email", "intent_strength": 3 }
+      "patch": {
+        "next_action": "request_email",
+        "intent_strength": 3
+      }
     },
     "pitch_handover": {
       "scene": "deck",
@@ -123,7 +394,10 @@
       },
       "nextAction": "request_email",
       "mode": "email",
-      "patch": { "next_action": "request_email", "intent_strength": 3 }
+      "patch": {
+        "next_action": "request_email",
+        "intent_strength": 3
+      }
     },
     "pitch_unresponsive": {
       "scene": "cove",
@@ -133,7 +407,10 @@
       },
       "nextAction": "request_email",
       "mode": "email",
-      "patch": { "next_action": "request_email", "intent_strength": 3 }
+      "patch": {
+        "next_action": "request_email",
+        "intent_strength": 3
+      }
     },
     "pitch_fake_reviews": {
       "scene": "bay",
@@ -143,7 +420,10 @@
       },
       "nextAction": "request_email",
       "mode": "email",
-      "patch": { "next_action": "request_email", "intent_strength": 4 }
+      "patch": {
+        "next_action": "request_email",
+        "intent_strength": 4
+      }
     },
     "pitch_price": {
       "scene": "bay",
@@ -153,7 +433,10 @@
       },
       "nextAction": "request_email",
       "mode": "email",
-      "patch": { "next_action": "request_email", "intent_strength": 3 }
+      "patch": {
+        "next_action": "request_email",
+        "intent_strength": 3
+      }
     },
     "pitch_crew_license": {
       "scene": "deck",
@@ -163,7 +446,10 @@
       },
       "nextAction": "request_email",
       "mode": "email",
-      "patch": { "next_action": "request_email", "intent_strength": 2 }
+      "patch": {
+        "next_action": "request_email",
+        "intent_strength": 2
+      }
     },
     "wrap_up_email": {
       "scene": "crew",
@@ -174,7 +460,10 @@
       "nextAction": "wrap_up",
       "terminal": true,
       "leadReady": true,
-      "patch": { "next_action": "wrap_up", "intent_strength": 4 }
+      "patch": {
+        "next_action": "wrap_up",
+        "intent_strength": 4
+      }
     }
   }
 }

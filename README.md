@@ -36,9 +36,9 @@ npm run dev
   Claude (mit Sprach-Hinweis je Locale) und erzwingt das Antwort-JSON über
   Structured Outputs. Charakter, Branching-Logik und Stop-Bedingungen liegen im
   `SYSTEM_PROMPT` dort.
-- **`app/tree.md`** bzw. `TREE.md` / `scripts/tree-*.mjs` — optionaler
-  Excel-Im/Export für den Tree (aktuell auf das einsprachige Altformat
-  ausgelegt, daher mit dem `{ de, en }`-Format nicht synchron).
+- **`TREE.md` / `scripts/tree-*.mjs`** — optionaler Excel-Im/Export des Trees als
+  eine flache Tabelle (`npm run tree:export` / `tree:import`). Format und
+  Workflow sind in `TREE.md` beschrieben.
 
 Hintergrund-Fotos liegen in `public/scenes/` (Platzhalter bzw. echte Segelfotos)
 und werden pro Node über das `scene`-Feld zugeordnet; Logos unter `public/`.
@@ -56,4 +56,3 @@ und werden pro Node über das `scene`-Feld zugeordnet; Logos unter `public/`.
   CRM/Sheet/Webhook anbinden.
 - Rate-Limiting / Abuse-Schutz auf der Route.
 - Review-Teaser-Karte vor dem Abschluss („Join the Community").
-- Excel-Konverter ans zweisprachige Format anpassen, falls weiter genutzt.
